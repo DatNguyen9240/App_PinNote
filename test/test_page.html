@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>IELTS Corner - Kiểm Thử Văn Bản & Hình Ảnh</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 30px;
+      background: #f1f5f9;
+      color: #334155;
+      min-height: 200vh;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+    }
+    h1 {
+      color: #0f172a;
+      margin-top: 0;
+      font-size: 20px;
+    }
+    .panel-box {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .btn:hover { background: #4338ca; }
+    .btn.white {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn.white:hover { background: #f8fafc; }
+    .guide-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 16px 0;
+      line-height: 1.8;
+      font-size: 13.5px;
+    }
+    code {
+      background: #e2e8f0;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #4338ca;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Trang Kiểm Thử Thẻ Xem Văn Bản & Hình Ảnh</h1>
+    <p>Giao diện đã được tối giản nhất có thể: Tách riêng <strong>Mục Văn Bản</strong> và <strong>Mục Hình Ảnh</strong>.</p>
+
+    <!-- Nút điều khiển nhanh -->
+    <div class="panel-box">
+      <strong>🎮 Nút điều khiển nhanh:</strong>
+      <div class="btn-row">
+        <button class="btn" id="btn-show">🟢 Hiện thẻ / Mở lại</button>
+        <button class="btn white" id="btn-reset">📍 Về góc dưới - phải</button>
+        <button class="btn white" id="btn-tab-text">📝 Sang mục Văn Bản</button>
+        <button class="btn white" id="btn-tab-image">🖼️ Sang mục Hình Ảnh</button>
+      </div>
+    </div>
+
+    <div class="guide-box">
+      <strong>✨ Các thao tác đơn giản:</strong>
+      <ul style="padding-left: 20px; margin: 6px 0;">
+        <li><strong>Di chuyển thẻ:</strong> Nhấp giữ thanh trên cùng (vùng <code>⠿ Kéo</code> hoặc khoảng trống) để kéo đi khắp màn hình.</li>
+        <li><strong>Phóng to / Thu nhỏ:</strong> Kéo góc tím <code>⤡</code> ở góc dưới cùng bên phải.</li>
+        <li><strong>Mục Văn bản:</strong> Gõ hoặc dán chữ bằng <code>Ctrl + V</code>, có nút <code>🔊 Đọc</code> nghe phát âm.</li>
+        <li><strong>Mục Hình ảnh:</strong> Chụp màn hình rồi ấn <code>Ctrl + V</code> để xem ảnh to rõ ràng.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Mock Chrome Extension Storage API (Đồng bộ thời gian thực 100% giữa nhiều tab bằng localStorage + BroadcastChannel) -->
+  <script>
+    if (typeof chrome === "undefined" || !chrome.storage) {
+      const listeners = [];
+      const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("ielts_mock_sync") : null;
+
+      function readLocal(key) {
+        try {
+          const val = localStorage.getItem("ielts_ext_" + key);
+          if (val === null || val === undefined) return undefined;
+          try {
+            return JSON.parse(val);
+          } catch (e) {
+            return val;
+          }
+        } catch (e) {
+          return undefined;
+        }
+      }
+
+      function writeLocal(key, value) {
+        try {
+          localStorage.setItem("ielts_ext_" + key, JSON.stringify(value));
+        } catch (e) {}
+      }
+
+      window.chrome = {
+        storage: {
+          local: {
+            get: (keys, cb) => {
+              const res = {};
+              if (Array.isArray(keys)) {
+                for (const k of keys) {
+                  const stored = readLocal(k);
+                  if (stored !== undefined) res[k] = stored;
+                }
+              } else if (typeof keys === "string") {
+                const stored = readLocal(keys);
+                if (stored !== undefined) res[keys] = stored;
+              } else if (keys && typeof keys === "object") {
+                Object.assign(res, keys);
+                for (const k of Object.keys(keys)) {
+                  const stored = readLocal(k);
+                  if (stored !== undefined) res[k] = stored;
+                }
+              } else {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const rawKey = localStorage.key(i);
+                  if (rawKey && rawKey.startsWith("ielts_ext_")) {
+                    const k = rawKey.replace("ielts_ext_", "");
+                    res[k] = readLocal(k);
+                  }
+                }
+              }
+              if (cb) cb(res);
+            },
+            set: (items, cb) => {
+              const changes = {};
+              for (const k in items) {
+                const oldVal = readLocal(k);
+                writeLocal(k, items[k]);
+                changes[k] = { oldValue: oldVal, newValue: items[k] };
+              }
+              // Báo cho chính tab này
+              listeners.forEach(fn => fn(changes, "local"));
+              // Phát tín hiệu đồng bộ tức thì sang tất cả các tab khác
+              if (channel) {
+                channel.postMessage({ type: "STORAGE_CHANGE", changes });
+              }
+              if (cb) cb();
+            }
+          },
+          onChanged: {
+            addListener: (fn) => listeners.push(fn)
+          }
+        }
+      };
+
+      // Nhận tín hiệu đồng bộ từ các tab khác
+      if (channel) {
+        channel.onmessage = (event) => {
+          if (event.data?.type === "STORAGE_CHANGE" && event.data.changes) {
+            listeners.forEach(fn => fn(event.data.changes, "local"));
+          }
+        };
+      }
+
+      // Hỗ trợ thêm sự kiện storage tiêu chuẩn của trình duyệt
+      window.addEventListener("storage", (e) => {
+        if (e.key && e.key.startsWith("ielts_ext_")) {
+          const key = e.key.replace("ielts_ext_", "");
+          try {
+            const newVal = e.newValue ? JSON.parse(e.newValue) : undefined;
+            const oldVal = e.oldValue ? JSON.parse(e.oldValue) : undefined;
+            const changes = { [key]: { oldValue: oldVal, newValue: newVal } };
+            listeners.forEach(fn => fn(changes, "local"));
+          } catch (err) {}
+        }
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("btn-show")?.addEventListener("click", () => {
+        chrome.storage.local.set({ isEnabled: true, isMinimized: false, forceShow: Date.now() });
+      });
+      document.getElementById("btn-reset")?.addEventListener("click", () => {
+        chrome.storage.local.set({ isEnabled: true, isMinimized: false, position: { right: 24, bottom: 24 }, cardWidth: 380, cardHeight: 440, forceShow: Date.now() });
+      });
+      document.getElementById("btn-tab-text")?.addEventListener("click", () => {
+        chrome.storage.local.set({ activeTab: "text", isEnabled: true, isMinimized: false, forceShow: Date.now() });
+      });
+      document.getElementById("btn-tab-image")?.addEventListener("click", () => {
+        chrome.storage.local.set({ activeTab: "image", isEnabled: true, isMinimized: false, forceShow: Date.now() });
+      });
+    });
+  </script>
+
+  <!-- Load Content Script -->
+  <script src="../content/content.js"></script>
+</body>
+</html>

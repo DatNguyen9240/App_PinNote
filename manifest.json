@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "IELTS Corner - Dán Ảnh, Văn Bản & Học Tiếng Anh Góc Màn Hình",
+  "version": "1.1.0",
+  "description": "Widget nổi góc màn hình: Dán đoạn văn, dán ảnh chụp màn hình, di chuyển & phóng to nhỏ tùy ý, học từ vựng IELTS.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Cài đặt IELTS Corner",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "data/vocab.js",
+        "content/content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ]
+}
+
