@@ -1,13 +1,16 @@
 # IELTS Corner - Tiện ích & Ứng Dụng Học IELTS & Note Tối Giản
 
 Phiên bản nâng cấp mới đáp ứng trọn vẹn tất cả yêu cầu:
-1. **🪟 Nắm kéo tab tách Note ra ngoài riêng (Tear-off Window)**: Nắm giữ chuột vào tab Note và kéo ra ngoài màn hình để tách thành một cửa sổ nổi độc lập! Hoặc bấm nút `[↗]` để tách tức thì. Ở cửa sổ riêng bấm `[↙]` để gộp lại vào cửa sổ chính.
-2. **🌐 Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)**: Dịch câu/đoạn văn học thuật mượt mà, phân tích các nét nghĩa và từ loại theo ngữ cảnh IELTS.
-3. **📑 Tạo & Quản lý nhiều Note cùng lúc**: Thêm nhanh bằng nút `[+]` hoặc `Ctrl + N`, nhấp đúp đổi tên Note (VD: `Task 1`, `Task 2`, `Collocations`), chuyển tab `Ctrl + Tab`.
-4. **🖍️ Highlight thông minh + Hoàn tác `Ctrl + Z`**: Bôi đen chữ ấn `Ctrl + H` để highlight, vừa highlight xong ấn `Ctrl + Z` là mất màu ngay mà không mất chữ.
-5. **👁️ Tối ưu hiển thị (Zen Mode & Split View)**: Xem được nhiều chữ và hình cùng lúc với chế độ song song **[🌓 Cả hai]**, thanh cuộn mỏng 5px, ẩn thanh nút để tối đa diện tích.
-6. **🚫 Không còn dấu gạch đỏ ziczac**: Đã tắt triệt để tính năng spellcheck kiểm tra chính tả.
-7. **📌 Luôn nổi trên màn hình (Always-on-top)**: Hiển thị nổi trên màn hình ở bất cứ đâu (đè lên Word, PDF Cambridge, Chrome, Desktop...) mà không bị giới hạn trong trình duyệt.
+1. **🔄 Dịch song ngữ đối ứng 2 chiều (Bidirectional Cross-Highlighting)**:
+   - **Bôi đen chữ / câu tiếng Anh**: Tự động tìm, làm sáng và cuộn đến câu dịch tiếng Việt đối lại!
+   - **Bôi đen chữ / câu tiếng Việt**: Tự động tìm, làm sáng và cuộn đến câu tiếng Anh gốc tương ứng!
+2. **🪟 Nắm kéo tab tách Note ra ngoài riêng (Tear-off Window)**: Nắm giữ chuột vào tab Note và kéo ra ngoài màn hình để tách thành một cửa sổ nổi độc lập! Hoặc bấm nút `[↗]` để tách tức thì. Ở cửa sổ riêng bấm `[↙]` để gộp lại vào cửa sổ chính.
+3. **🌐 Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)**: Dịch câu/đoạn văn học thuật mượt mà, phân tích các nét nghĩa và từ loại theo ngữ cảnh IELTS.
+4. **📑 Tạo & Quản lý nhiều Note cùng lúc**: Thêm nhanh bằng nút `[+]` hoặc `Ctrl + N`, nhấp đúp đổi tên Note (VD: `Task 1`, `Task 2`, `Collocations`), chuyển tab `Ctrl + Tab`.
+5. **🖍️ Highlight thông minh + Hoàn tác `Ctrl + Z`**: Bôi đen chữ ấn `Ctrl + H` để highlight, vừa highlight xong ấn `Ctrl + Z` là mất màu ngay mà không mất chữ.
+6. **👁️ Tối ưu hiển thị (Zen Mode & Split View)**: Xem được nhiều chữ và hình cùng lúc với chế độ song song **[🌓 Cả hai]**, thanh cuộn mỏng 5px, ẩn thanh nút để tối đa diện tích.
+7. **🚫 Không còn dấu gạch đỏ ziczac**: Đã tắt triệt để tính năng spellcheck kiểm tra chính tả.
+8. **📌 Luôn nổi trên màn hình (Always-on-top)**: Hiển thị nổi trên màn hình ở bất cứ đâu (đè lên Word, PDF Cambridge, Chrome, Desktop...) mà không bị giới hạn trong trình duyệt.
 
 ---
 

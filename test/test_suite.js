@@ -57,11 +57,10 @@ assert(contentJs.includes("translateContext") && contentJs.includes("btn-trans")
 assert(appPy.includes("DetachedNoteWindow") && appPy.includes("detach_note") && appPy.includes("reattach_note"), "Desktop App hỗ trợ tách và gộp Note thành cửa sổ riêng biệt");
 assert(appPy.includes("on_tab_motion") && appPy.includes("ghost"), "Desktop App hỗ trợ nắm kéo chuột tab Note ra ngoài để tách cửa sổ (Tear-off tab)");
 assert(standaloneHtml.includes("detachNoteWeb"), "Web Standalone hỗ trợ mở Note trong cửa sổ riêng biệt");
-assert(appPy.includes("translate_context") && appPy.includes("client=gtx"), "Desktop App hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
-assert(standaloneHtml.includes("translateContext") && standaloneHtml.includes("client=gtx"), "Web Standalone hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
-assert(contentJs.includes("translateContext") && contentJs.includes("btn-trans"), "Chrome Extension hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
-assert(appPy.includes("DetachedNoteWindow") && appPy.includes("detach_note") && appPy.includes("reattach_note"), "Desktop App hỗ trợ tách và gộp Note thành cửa sổ riêng biệt");
-assert(appPy.includes("on_tab_motion") && appPy.includes("ghost"), "Desktop App hỗ trợ nắm kéo chuột tab Note ra ngoài để tách cửa sổ (Tear-off tab)");
-assert(standaloneHtml.includes("detachNoteWeb"), "Web Standalone hỗ trợ mở Note trong cửa sổ riêng biệt");
+assert(appPy.includes("on_en_selection_change") && appPy.includes("on_vi_selection_change"), "Desktop App hỗ trợ bôi đen tìm câu/từ đối ứng song ngữ 2 chiều");
+assert(standaloneHtml.includes("highlightAlignFromEn") && standaloneHtml.includes("highlightAlignFromVi"), "Web Standalone hỗ trợ tìm câu/từ đối ứng song ngữ 2 chiều");
+assert(contentJs.includes("highlightAlignFromEn") && contentJs.includes("highlightAlignFromVi"), "Chrome Extension hỗ trợ tìm câu/từ đối ứng song ngữ 2 chiều");
+assert(appPy.includes("ensure_single_instance") && appPy.includes("os._exit(0)"), "Desktop App có khóa đơn phiên chống mở đè nhiều app và thoát sạch sẽ");
+assert(contentJs.includes("btn-close-widget"), "Chrome Extension có nút đóng hoàn toàn (✕) để không tự hiện lại");
 
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);

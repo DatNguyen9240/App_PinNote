@@ -1,5 +1,7 @@
 """
-IELTS Corner - Desktop Widget (Hỗ trợ Kéo Tách Note Ra Ngoài Cửa Sổ Riêng + Dịch Ngữ Cảnh + Highlight)
+IELTS Corner - Desktop Widget (Hỗ trợ Dịch Song Ngữ Đối Ứng 2 Chiều + Tách Note + Highlight)
+- Bôi đen chữ / câu tiếng Anh ➔ Tự động tìm, làm sáng và cuộn đến câu dịch tiếng Việt đối lại!
+- Bôi đen chữ / câu tiếng Việt ➔ Tự động tìm, làm sáng và cuộn đến câu tiếng Anh gốc tương ứng!
 - Nắm kéo Note ra ngoài màn hình (Tear-off tab): Thả ra ngoài để tách thành cửa sổ riêng biệt nổi độc lập!
 - Nút tách nhanh ↗ và menu chuột phải "Tách thành cửa sổ riêng".
 - Nút gộp lại ↙ để đưa Note trở về cửa sổ chính bất cứ lúc nào.
@@ -19,11 +21,24 @@ import threading
 import subprocess
 import urllib.request
 import urllib.parse
+import socket
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk, ImageGrab
 
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ielts_desktop_data.json")
+
+# Khóa đơn phiên (Single-instance lock) ngăn việc mở nhiều cửa sổ trùng đè lên nhau
+_instance_socket = None
+
+def ensure_single_instance():
+    global _instance_socket
+    try:
+        _instance_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _instance_socket.bind(("127.0.0.1", 48829))
+        return True
+    except socket.error:
+        return False
 
 
 def fetch_context_translation(query_text, on_success, on_error):
@@ -37,7 +52,11 @@ def fetch_context_translation(query_text, on_success, on_error):
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=8) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-                translated = "".join([item[0] for item in data[0] if item and item[0]])
+                raw_segments = []
+                if data and len(data) > 0 and data[0]:
+                    for s in data[0]:
+                        if s and len(s) > 1 and s[0] and s[1]:
+                            raw_segments.append({"en": s[1], "vi": s[0]})
 
                 extra = ""
                 if len(data) > 1 and data[1]:
@@ -49,7 +68,7 @@ def fetch_context_translation(query_text, on_success, on_error):
                     if extra_lines:
                         extra = "\n\n📚 Các nét nghĩa theo ngữ cảnh:\n" + "\n".join(extra_lines)
 
-                on_success(translated + extra)
+                on_success(raw_segments, extra)
         except Exception:
             on_error("Không thể kết nối máy chủ dịch (vui lòng kiểm tra kết nối mạng).")
 
@@ -81,7 +100,6 @@ def speak_english_text(text):
 
 # ==============================================================================
 # LỚP CỬA SỔ NOTE TÁCH RỜI (DETACHED NOTE WINDOW)
-# Cho phép kéo tab Note ra ngoài để biến thành một cửa sổ nổi riêng biệt hoàn chỉnh!
 # ==============================================================================
 class DetachedNoteWindow:
     def __init__(self, main_app, note, x=None, y=None):
@@ -119,6 +137,10 @@ class DetachedNoteWindow:
         self.redo_history = []
         self.hl_counter = 0
 
+        # Danh sách đối ứng song ngữ 2 chiều
+        self.align_segments = []
+        self.is_syncing_align = False
+
         self.create_ui()
         self.setup_highlight_tags()
         self.load_content()
@@ -131,11 +153,9 @@ class DetachedNoteWindow:
         self.top.title(f"IELTS Corner - {title}")
 
     def create_ui(self):
-        # 1. Thanh công cụ tối giản siêu mỏng (28px)
         self.top_bar = tk.Frame(self.top, bg="#f8fafc", height=28)
         self.top_bar.pack(fill=tk.X, side=tk.TOP)
 
-        # Bên trái: Chế độ xem [📝] [🖼️] [🌓]
         mode_frame = tk.Frame(self.top_bar, bg="#f8fafc")
         mode_frame.pack(side=tk.LEFT, padx=3, pady=2)
 
@@ -166,7 +186,6 @@ class DetachedNoteWindow:
         self.btn_mode_split.pack(side=tk.LEFT, padx=1)
         self.btn_mode_split.bind("<Button-1>", lambda e: self.switch_tab("split"))
 
-        # Ở giữa: Tên Note (Nhấp đúp chuột để đổi tên)
         title_box = tk.Frame(self.top_bar, bg="#f8fafc")
         title_box.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
 
@@ -180,7 +199,6 @@ class DetachedNoteWindow:
         self.lbl_title.pack(side=tk.LEFT)
         self.lbl_title.bind("<Double-Button-1>", lambda e: self.rename_note())
 
-        # Bên phải: 🌐 Dịch | 🖍️ Highlight | 🔊 Đọc | 📌 Ghim | ↙ Gộp lại
         actions_frame = tk.Frame(self.top_bar, bg="#f8fafc")
         actions_frame.pack(side=tk.RIGHT, padx=3)
 
@@ -220,11 +238,9 @@ class DetachedNoteWindow:
         self.btn_reattach.pack(side=tk.LEFT, padx=1)
         self.btn_reattach.bind("<Button-1>", lambda e: self.reattach_to_main())
 
-        # 2. Khung nội dung chính
         self.content_frame = tk.Frame(self.top, bg="#ffffff")
         self.content_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 3. Khung hình ảnh
         self.image_container = tk.Frame(self.content_frame, bg="#f8fafc")
         self.image_label = tk.Label(
             self.image_container,
@@ -235,7 +251,6 @@ class DetachedNoteWindow:
         self.image_label.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         self.image_label.bind("<Button-1>", self.on_image_click)
 
-        # 4. Khung văn bản
         self.text_container = tk.Frame(self.content_frame, bg="#ffffff")
         self.text_editor = tk.Text(
             self.text_container,
@@ -256,14 +271,14 @@ class DetachedNoteWindow:
         )
         self.text_editor.pack(fill=tk.BOTH, expand=True)
 
-        # 5. Khung dịch chuẩn ngữ cảnh (Collapsible Bottom Drawer)
+        # Khung dịch chuẩn ngữ cảnh đối ứng song ngữ
         self.trans_panel = tk.Frame(self.top, bg="#f8fafc", relief="solid", bd=1)
 
         trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=24)
         trans_header.pack(fill=tk.X, side=tk.TOP)
 
         lbl_trans_title = tk.Label(
-            trans_header, text="🌐 Dịch chuẩn ngữ cảnh (IELTS Context)",
+            trans_header, text="🌐 Dịch đối ứng song ngữ (Bôi đen câu/từ để tìm đối ứng 2 chiều)",
             font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2
         )
         lbl_trans_title.pack(side=tk.LEFT)
@@ -292,7 +307,7 @@ class DetachedNoteWindow:
             fg="#0f172a",
             padx=8,
             pady=6,
-            height=4
+            height=5
         )
         self.trans_text.pack(fill=tk.BOTH, expand=True)
 
@@ -321,6 +336,16 @@ class DetachedNoteWindow:
         self.text_editor.bind("<Control-y>", self.on_redo)
         self.text_editor.bind("<Control-Y>", self.on_redo)
         self.text_editor.bind("<Key>", self.on_key_press)
+
+        # Lắng nghe bôi đen / chọn chữ 2 chiều (tiếng Anh ➔ tiếng Việt và ngược lại)
+        self.text_editor.bind("<<Selection>>", self.on_en_selection_change)
+        self.text_editor.bind("<ButtonRelease-1>", self.on_en_selection_change)
+        self.text_editor.bind("<KeyRelease>", self.on_en_selection_change)
+
+        self.trans_text.bind("<<Selection>>", self.on_vi_selection_change)
+        self.trans_text.bind("<ButtonRelease-1>", self.on_vi_selection_change)
+        self.trans_text.bind("<KeyRelease>", self.on_vi_selection_change)
+
         self.top.bind("<Button-3>", self.show_context_menu)
         self.top.bind("<Configure>", self.on_window_resize)
 
@@ -329,6 +354,10 @@ class DetachedNoteWindow:
         self.text_editor.tag_configure("hl_green", background="#bbf7d0", foreground="#0f172a")
         self.text_editor.tag_configure("hl_pink", background="#fbcfe8", foreground="#0f172a")
         self.text_editor.tag_configure("hl_blue", background="#bae6fd", foreground="#0f172a")
+
+        # Tag đối ứng song ngữ 2 chiều (Warm luminous tone)
+        self.text_editor.tag_configure("align_match", background="#fed7aa", foreground="#7c2d12")
+        self.trans_text.tag_configure("align_match", background="#fed7aa", foreground="#7c2d12")
 
     def load_content(self):
         self.text_editor.delete("1.0", tk.END)
@@ -491,6 +520,7 @@ class DetachedNoteWindow:
                     pass
             return "break"
 
+    # --- DỊCH CHUẨN NGỮ CẢNH VÀ TÌM ĐỐI ỨNG SONG NGỮ 2 CHIỀU ---
     def translate_context(self):
         try:
             query_text = self.text_editor.get(tk.SEL_FIRST, tk.SEL_LAST).strip()
@@ -503,20 +533,146 @@ class DetachedNoteWindow:
         if not query_text:
             return
 
-        self.show_translation("⏳ Đang phân tích và dịch chuẩn ngữ cảnh...")
+        self.show_translation_loading("⏳ Đang phân tích ngữ cảnh và dịch đối ứng song ngữ...")
         fetch_context_translation(
             query_text,
-            on_success=lambda res: self.top.after(0, lambda: self.show_translation(res)),
-            on_error=lambda err: self.top.after(0, lambda: self.show_translation(err))
+            on_success=lambda raw_segs, extra: self.top.after(0, lambda: self.display_aligned_translation(raw_segs, extra)),
+            on_error=lambda err: self.top.after(0, lambda: self.show_translation_error(err))
         )
 
-    def show_translation(self, text):
+    def show_translation_loading(self, text):
         if not self.trans_panel.winfo_ismapped():
             self.trans_panel.pack(fill=tk.X, side=tk.BOTTOM, before=self.content_frame)
         self.trans_text.delete("1.0", tk.END)
         self.trans_text.insert("1.0", text)
 
+    def show_translation_error(self, err):
+        self.trans_text.delete("1.0", tk.END)
+        self.trans_text.insert("1.0", err)
+
+    def display_aligned_translation(self, raw_segments, extra):
+        self.align_segments = []
+        self.trans_text.delete("1.0", tk.END)
+
+        curr_en_search = "1.0"
+        ts = int(time.time() * 1000)
+
+        for i, seg in enumerate(raw_segments):
+            clean_en = seg["en"].strip()
+            ms_en = f"det_en_s_{i}_{ts}"
+            me_en = f"det_en_e_{i}_{ts}"
+
+            if clean_en:
+                pos = self.text_editor.search(clean_en, curr_en_search, tk.END)
+                if not pos:
+                    prefix = clean_en[:min(25, len(clean_en))]
+                    pos = self.text_editor.search(prefix, curr_en_search, tk.END)
+                if pos:
+                    end_pos = f"{pos}+{len(clean_en)}c"
+                    self.text_editor.mark_set(ms_en, pos)
+                    self.text_editor.mark_set(me_en, end_pos)
+                    self.text_editor.mark_gravity(ms_en, tk.LEFT)
+                    self.text_editor.mark_gravity(me_en, tk.RIGHT)
+                    curr_en_search = end_pos
+                else:
+                    ms_en, me_en = None, None
+            else:
+                ms_en, me_en = None, None
+
+            ms_vi = f"det_vi_s_{i}_{ts}"
+            me_vi = f"det_vi_e_{i}_{ts}"
+            vi_start = self.trans_text.index(tk.INSERT)
+            self.trans_text.insert(tk.END, seg["vi"])
+            vi_end = self.trans_text.index(f"{tk.INSERT}-1c")
+
+            self.trans_text.mark_set(ms_vi, vi_start)
+            self.trans_text.mark_set(me_vi, vi_end)
+            self.trans_text.mark_gravity(ms_vi, tk.LEFT)
+            self.trans_text.mark_gravity(me_vi, tk.RIGHT)
+
+            if ms_en and me_en:
+                self.align_segments.append({
+                    "ms_en": ms_en,
+                    "me_en": me_en,
+                    "ms_vi": ms_vi,
+                    "me_vi": me_vi,
+                    "en": clean_en,
+                    "vi": seg["vi"].strip()
+                })
+
+        if extra:
+            self.trans_text.insert(tk.END, extra)
+
+        if not self.trans_panel.winfo_ismapped():
+            self.trans_panel.pack(fill=tk.X, side=tk.BOTTOM, before=self.content_frame)
+
+        self.on_en_selection_change()
+
+    def on_en_selection_change(self, event=None):
+        if self.is_syncing_align or not getattr(self, "align_segments", None):
+            return
+        try:
+            sel_s = self.text_editor.index(tk.SEL_FIRST)
+            sel_e = self.text_editor.index(tk.SEL_LAST)
+        except tk.TclError:
+            sel_s = self.text_editor.index(tk.INSERT)
+            sel_e = f"{sel_s}+1c"
+
+        self.is_syncing_align = True
+        try:
+            self.trans_text.tag_remove("align_match", "1.0", tk.END)
+            first_match = None
+            for seg in self.align_segments:
+                try:
+                    s_en = self.text_editor.index(seg["ms_en"])
+                    e_en = self.text_editor.index(seg["me_en"])
+                    if self.text_editor.compare(sel_s, "<", e_en) and self.text_editor.compare(sel_e, ">", s_en):
+                        vi_s = self.trans_text.index(seg["ms_vi"])
+                        vi_e = self.trans_text.index(seg["me_vi"])
+                        self.trans_text.tag_add("align_match", vi_s, vi_e)
+                        if not first_match:
+                            first_match = vi_s
+                except Exception:
+                    pass
+            if first_match:
+                self.trans_text.see(first_match)
+        finally:
+            self.is_syncing_align = False
+
+    def on_vi_selection_change(self, event=None):
+        if self.is_syncing_align or not getattr(self, "align_segments", None):
+            return
+        try:
+            sel_s = self.trans_text.index(tk.SEL_FIRST)
+            sel_e = self.trans_text.index(tk.SEL_LAST)
+        except tk.TclError:
+            sel_s = self.trans_text.index(tk.INSERT)
+            sel_e = f"{sel_s}+1c"
+
+        self.is_syncing_align = True
+        try:
+            self.text_editor.tag_remove("align_match", "1.0", tk.END)
+            first_match = None
+            for seg in self.align_segments:
+                try:
+                    s_vi = self.trans_text.index(seg["ms_vi"])
+                    e_vi = self.trans_text.index(seg["me_vi"])
+                    if self.trans_text.compare(sel_s, "<", e_vi) and self.trans_text.compare(sel_e, ">", s_vi):
+                        en_s = self.text_editor.index(seg["ms_en"])
+                        en_e = self.text_editor.index(seg["me_en"])
+                        self.text_editor.tag_add("align_match", en_s, en_e)
+                        if not first_match:
+                            first_match = en_s
+                except Exception:
+                    pass
+            if first_match:
+                self.text_editor.see(first_match)
+        finally:
+            self.is_syncing_align = False
+
     def close_translation(self):
+        self.text_editor.tag_remove("align_match", "1.0", tk.END)
+        self.trans_text.tag_remove("align_match", "1.0", tk.END)
         if self.trans_panel.winfo_ismapped():
             self.trans_panel.pack_forget()
 
@@ -647,7 +803,7 @@ class DetachedNoteWindow:
 
     def create_context_menu(self):
         self.menu = tk.Menu(self.top, tearoff=0, font=("Segoe UI", 9))
-        self.menu.add_command(label="🌐 Dịch chuẩn ngữ cảnh (Ctrl+T)", command=self.translate_context)
+        self.menu.add_command(label="🌐 Dịch song ngữ đối ứng (Ctrl+T)", command=self.translate_context)
         self.menu.add_command(label="🔊 Nghe đọc đoạn văn (Ctrl+D)", command=self.play_tts)
         self.menu.add_command(label="↙ Gộp lại vào cửa sổ chính", command=self.reattach_to_main)
         self.menu.add_separator()
@@ -696,6 +852,10 @@ class IELTSCornerApp:
         self.detached_windows = {}
         self.tab_drag = None
 
+        # Danh sách đối ứng song ngữ 2 chiều
+        self.align_segments = []
+        self.is_syncing_align = False
+
         # Lịch sử hoàn tác (Undo/Redo) cho Highlight và Text
         self.action_history = []
         self.redo_history = []
@@ -743,6 +903,15 @@ class IELTSCornerApp:
         self.text_editor.bind("<Control-Y>", self.on_redo)
         self.text_editor.bind("<Key>", self.on_key_press)
 
+        # Lắng nghe bôi đen / chọn chữ 2 chiều (tiếng Anh ➔ tiếng Việt và ngược lại)
+        self.text_editor.bind("<<Selection>>", self.on_en_selection_change)
+        self.text_editor.bind("<ButtonRelease-1>", self.on_en_selection_change)
+        self.text_editor.bind("<KeyRelease>", self.on_en_selection_change)
+
+        self.trans_text.bind("<<Selection>>", self.on_vi_selection_change)
+        self.trans_text.bind("<ButtonRelease-1>", self.on_vi_selection_change)
+        self.trans_text.bind("<KeyRelease>", self.on_vi_selection_change)
+
         # Menu chuột phải
         self.create_context_menu()
         self.root.bind("<Button-3>", self.show_context_menu)
@@ -754,13 +923,12 @@ class IELTSCornerApp:
     def load_data(self):
         default_geometry = "440x540+860+140"
         default_text = (
-            "Chào bạn! Ứng dụng đã hỗ trợ KÉO TÁCH NOTE RA NGOÀI CỬA SỔ RIÊNG:\n\n"
+            "Chào bạn! Ứng dụng đã hỗ trợ DỊCH ĐỐI ỨNG SONG NGỮ 2 CHIỀU & TÁCH CỬA SỔ:\n\n"
+            "• Nhấn Ctrl + T (hoặc icon 🌐) để dịch toàn bộ bài hoặc đoạn chọn sang tiếng Việt.\n"
+            "• BÔI ĐEN câu/từ tiếng Anh ➔ Tự động làm sáng & tìm đến câu dịch tiếng Việt đối lại!\n"
+            "• BÔI ĐEN câu/từ tiếng Việt ➔ Tự động làm sáng & tìm đến câu tiếng Anh đối lại!\n"
             "• Nắm giữ chuột vào tab Note và kéo ra ngoài màn hình để tách thành cửa sổ riêng!\n"
-            "• Hoặc bấm nút [↗] bên cạnh tab Note để tách tức thì.\n"
-            "• Ở cửa sổ riêng bấm [↙] để gộp lại vào cửa sổ chính.\n"
-            "• Bôi đen chữ rồi ấn Ctrl + T (hoặc icon 🌐) để dịch chuẩn ngữ cảnh IELTS.\n"
-            "• Bôi đen chữ ấn Ctrl + H để highlight, ấn Ctrl + Z hủy highlight tức thì.\n"
-            "• Bấm nút [+] tạo thêm Note mới (Task 1, Task 2, Vocab...)."
+            "• Hoặc bấm nút [↗] bên cạnh tab Note để tách tức thì, bấm [↙] để gộp lại."
         )
 
         if os.path.exists(DATA_FILE):
@@ -977,7 +1145,6 @@ class IELTSCornerApp:
     # CÁC HÀM QUẢN LÝ KÉO TÁCH & GỘP NOTE (TEAR-OFF & REATTACH)
     # ==========================================================================
     def detach_note(self, note_id, x=None, y=None):
-        """Tách Note thành một cửa sổ riêng biệt nổi độc lập."""
         nid = str(note_id)
         if nid in self.detached_windows:
             self.focus_detached_note(nid)
@@ -997,8 +1164,6 @@ class IELTSCornerApp:
         win = DetachedNoteWindow(self, target_note, x=x, y=y)
         self.detached_windows[nid] = win
 
-        # Nếu note vừa tách chính là note đang xem trên cửa sổ chính,
-        # chuyển cửa sổ chính sang một note khác chưa bị tách
         if nid == str(self.active_note_id):
             attached = [n for n in self.notes if str(n["id"]) not in self.detached_windows]
             if attached:
@@ -1011,7 +1176,6 @@ class IELTSCornerApp:
         self.save_data()
 
     def reattach_note(self, note_id):
-        """Gộp cửa sổ riêng trở lại vào cửa sổ chính."""
         nid = str(note_id)
         win = self.detached_windows.get(nid)
         if win:
@@ -1030,7 +1194,6 @@ class IELTSCornerApp:
         self.root.lift()
 
     def focus_detached_note(self, note_id):
-        """Đưa cửa sổ tách rời lên trên cùng và focus."""
         nid = str(note_id)
         win = self.detached_windows.get(nid)
         if win and win.top.winfo_exists():
@@ -1039,13 +1202,11 @@ class IELTSCornerApp:
             win.top.focus_force()
 
     def on_detached_window_closed(self, note_id):
-        """Xử lý khi người dùng ấn nút X trên cửa sổ Note riêng."""
         nid = str(note_id)
         self.detached_windows.pop(nid, None)
         self.render_note_tabs()
         self.save_data()
 
-    # Kéo thả Tab Note ra ngoài để tách (Drag & Drop Tear-Off)
     def on_tab_press(self, event, nid):
         self.tab_drag = {
             "nid": str(nid),
@@ -1109,7 +1270,6 @@ class IELTSCornerApp:
             win_y = self.root.winfo_rooty()
             win_w = self.root.winfo_width()
 
-            # Thả bên ngoài phạm vi thanh công cụ trên cùng
             is_outside = (
                 event.x_root < win_x - 5 or event.x_root > win_x + win_w + 5 or
                 event.y_root < win_y - 5 or event.y_root > win_y + 45
@@ -1118,7 +1278,6 @@ class IELTSCornerApp:
                 self.detach_note(nid, x=event.x_root - 80, y=event.y_root - 20)
                 return
 
-        # Nhấp chuột bình thường
         if str(nid) in self.detached_windows:
             self.focus_detached_note(nid)
         else:
@@ -1187,7 +1346,6 @@ class IELTSCornerApp:
             pill.bind("<Double-Button-1>", lambda e, n=note: self.rename_current_note(n))
             pill.bind("<Button-3>", lambda e, n=note: self.show_tab_context_menu(e, n))
 
-            # Nút icon nhỏ ↗ bên cạnh Note đang active để tách ngay nếu không muốn kéo chuột
             if is_active and not is_detached:
                 btn_detach = tk.Label(
                     pill_container, text="↗", font=("Segoe UI", 7, "bold"),
@@ -1212,6 +1370,10 @@ class IELTSCornerApp:
         self.text_editor.tag_configure("hl_green", background="#bbf7d0", foreground="#0f172a")
         self.text_editor.tag_configure("hl_pink", background="#fbcfe8", foreground="#0f172a")
         self.text_editor.tag_configure("hl_blue", background="#bae6fd", foreground="#0f172a")
+
+        # Tag đối ứng song ngữ 2 chiều
+        self.text_editor.tag_configure("align_match", background="#fed7aa", foreground="#7c2d12")
+        self.trans_text.tag_configure("align_match", background="#fed7aa", foreground="#7c2d12")
 
     def apply_saved_highlights(self):
         for hl in self.saved_highlights:
@@ -1375,7 +1537,7 @@ class IELTSCornerApp:
             return "break"
 
     # ==========================================================================
-    # CHỨC NĂNG DỊCH CHUẨN NGỮ CẢNH
+    # CHỨC NĂNG DỊCH CHUẨN NGỮ CẢNH & TÌM ĐỐI ỨNG SONG NGỮ 2 CHIỀU
     # ==========================================================================
     def translate_context(self):
         try:
@@ -1389,20 +1551,146 @@ class IELTSCornerApp:
         if not query_text:
             return
 
-        self.show_translation("⏳ Đang phân tích và dịch chuẩn ngữ cảnh...")
+        self.show_translation_loading("⏳ Đang phân tích ngữ cảnh và dịch đối ứng song ngữ...")
         fetch_context_translation(
             query_text,
-            on_success=lambda res: self.root.after(0, lambda: self.show_translation(res)),
-            on_error=lambda err: self.root.after(0, lambda: self.show_translation(err))
+            on_success=lambda raw_segs, extra: self.root.after(0, lambda: self.display_aligned_translation(raw_segs, extra)),
+            on_error=lambda err: self.root.after(0, lambda: self.show_translation_error(err))
         )
 
-    def show_translation(self, text):
+    def show_translation_loading(self, text):
         if not self.trans_panel.winfo_ismapped():
             self.trans_panel.pack(fill=tk.X, side=tk.BOTTOM, before=self.content_frame)
         self.trans_text.delete("1.0", tk.END)
         self.trans_text.insert("1.0", text)
 
+    def show_translation_error(self, err):
+        self.trans_text.delete("1.0", tk.END)
+        self.trans_text.insert("1.0", err)
+
+    def display_aligned_translation(self, raw_segments, extra):
+        self.align_segments = []
+        self.trans_text.delete("1.0", tk.END)
+
+        curr_en_search = "1.0"
+        ts = int(time.time() * 1000)
+
+        for i, seg in enumerate(raw_segments):
+            clean_en = seg["en"].strip()
+            ms_en = f"main_en_s_{i}_{ts}"
+            me_en = f"main_en_e_{i}_{ts}"
+
+            if clean_en:
+                pos = self.text_editor.search(clean_en, curr_en_search, tk.END)
+                if not pos:
+                    prefix = clean_en[:min(25, len(clean_en))]
+                    pos = self.text_editor.search(prefix, curr_en_search, tk.END)
+                if pos:
+                    end_pos = f"{pos}+{len(clean_en)}c"
+                    self.text_editor.mark_set(ms_en, pos)
+                    self.text_editor.mark_set(me_en, end_pos)
+                    self.text_editor.mark_gravity(ms_en, tk.LEFT)
+                    self.text_editor.mark_gravity(me_en, tk.RIGHT)
+                    curr_en_search = end_pos
+                else:
+                    ms_en, me_en = None, None
+            else:
+                ms_en, me_en = None, None
+
+            ms_vi = f"main_vi_s_{i}_{ts}"
+            me_vi = f"main_vi_e_{i}_{ts}"
+            vi_start = self.trans_text.index(tk.INSERT)
+            self.trans_text.insert(tk.END, seg["vi"])
+            vi_end = self.trans_text.index(f"{tk.INSERT}-1c")
+
+            self.trans_text.mark_set(ms_vi, vi_start)
+            self.trans_text.mark_set(me_vi, vi_end)
+            self.trans_text.mark_gravity(ms_vi, tk.LEFT)
+            self.trans_text.mark_gravity(me_vi, tk.RIGHT)
+
+            if ms_en and me_en:
+                self.align_segments.append({
+                    "ms_en": ms_en,
+                    "me_en": me_en,
+                    "ms_vi": ms_vi,
+                    "me_vi": me_vi,
+                    "en": clean_en,
+                    "vi": seg["vi"].strip()
+                })
+
+        if extra:
+            self.trans_text.insert(tk.END, extra)
+
+        if not self.trans_panel.winfo_ismapped():
+            self.trans_panel.pack(fill=tk.X, side=tk.BOTTOM, before=self.content_frame)
+
+        self.on_en_selection_change()
+
+    def on_en_selection_change(self, event=None):
+        if self.is_syncing_align or not getattr(self, "align_segments", None):
+            return
+        try:
+            sel_s = self.text_editor.index(tk.SEL_FIRST)
+            sel_e = self.text_editor.index(tk.SEL_LAST)
+        except tk.TclError:
+            sel_s = self.text_editor.index(tk.INSERT)
+            sel_e = f"{sel_s}+1c"
+
+        self.is_syncing_align = True
+        try:
+            self.trans_text.tag_remove("align_match", "1.0", tk.END)
+            first_match = None
+            for seg in self.align_segments:
+                try:
+                    s_en = self.text_editor.index(seg["ms_en"])
+                    e_en = self.text_editor.index(seg["me_en"])
+                    if self.text_editor.compare(sel_s, "<", e_en) and self.text_editor.compare(sel_e, ">", s_en):
+                        vi_s = self.trans_text.index(seg["ms_vi"])
+                        vi_e = self.trans_text.index(seg["me_vi"])
+                        self.trans_text.tag_add("align_match", vi_s, vi_e)
+                        if not first_match:
+                            first_match = vi_s
+                except Exception:
+                    pass
+            if first_match:
+                self.trans_text.see(first_match)
+        finally:
+            self.is_syncing_align = False
+
+    def on_vi_selection_change(self, event=None):
+        if self.is_syncing_align or not getattr(self, "align_segments", None):
+            return
+        try:
+            sel_s = self.trans_text.index(tk.SEL_FIRST)
+            sel_e = self.trans_text.index(tk.SEL_LAST)
+        except tk.TclError:
+            sel_s = self.trans_text.index(tk.INSERT)
+            sel_e = f"{sel_s}+1c"
+
+        self.is_syncing_align = True
+        try:
+            self.text_editor.tag_remove("align_match", "1.0", tk.END)
+            first_match = None
+            for seg in self.align_segments:
+                try:
+                    s_vi = self.trans_text.index(seg["ms_vi"])
+                    e_vi = self.trans_text.index(seg["me_vi"])
+                    if self.trans_text.compare(sel_s, "<", e_vi) and self.trans_text.compare(sel_e, ">", s_vi):
+                        en_s = self.text_editor.index(seg["ms_en"])
+                        en_e = self.text_editor.index(seg["me_en"])
+                        self.text_editor.tag_add("align_match", en_s, en_e)
+                        if not first_match:
+                            first_match = en_s
+                except Exception:
+                    pass
+            if first_match:
+                self.text_editor.see(first_match)
+        finally:
+            self.is_syncing_align = False
+
     def close_translation(self):
+        self.text_editor.tag_remove("align_match", "1.0", tk.END)
+        self.trans_text.tag_remove("align_match", "1.0", tk.END)
         if self.trans_panel.winfo_ismapped():
             self.trans_panel.pack_forget()
 
@@ -1532,14 +1820,14 @@ class IELTSCornerApp:
         )
         self.text_editor.pack(fill=tk.BOTH, expand=True)
 
-        # 5. KHUNG KẾT QUẢ DỊCH
+        # 5. KHUNG KẾT QUẢ DỊCH ĐỐI ỨNG SONG NGỮ
         self.trans_panel = tk.Frame(self.root, bg="#f8fafc", relief="solid", bd=1)
 
         trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=24)
         trans_header.pack(fill=tk.X, side=tk.TOP)
 
         lbl_trans_title = tk.Label(
-            trans_header, text="🌐 Dịch chuẩn ngữ cảnh (IELTS Context)",
+            trans_header, text="🌐 Dịch đối ứng song ngữ (Bôi đen câu/từ để tìm đối ứng 2 chiều)",
             font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2
         )
         lbl_trans_title.pack(side=tk.LEFT)
@@ -1568,7 +1856,7 @@ class IELTSCornerApp:
             fg="#0f172a",
             padx=8,
             pady=6,
-            height=4
+            height=5
         )
         self.trans_text.pack(fill=tk.BOTH, expand=True)
 
@@ -1586,7 +1874,7 @@ class IELTSCornerApp:
     def create_context_menu(self):
         self.menu = tk.Menu(self.root, tearoff=0, font=("Segoe UI", 9))
 
-        self.menu.add_command(label="🌐 Dịch chuẩn ngữ cảnh (Ctrl+T)", command=self.translate_context)
+        self.menu.add_command(label="🌐 Dịch song ngữ đối ứng (Ctrl+T)", command=self.translate_context)
         self.menu.add_command(label="🔊 Nghe đọc đoạn văn (Ctrl+D)", command=self.play_tts)
         self.menu.add_command(label="↗ Tách Note này thành cửa sổ riêng", command=lambda: self.detach_note(self.active_note_id))
         self.menu.add_separator()
@@ -1768,7 +2056,6 @@ class IELTSCornerApp:
         speak_english_text(text)
 
     def on_close(self):
-        # Đóng và đồng bộ tất cả các cửa sổ Note riêng trước khi thoát
         for nid, win in list(self.detached_windows.items()):
             try:
                 win.sync_to_note()
@@ -1777,11 +2064,17 @@ class IELTSCornerApp:
                 pass
         self.detached_windows.clear()
         self.save_data()
-        self.root.destroy()
-        sys.exit(0)
+        try:
+            self.root.destroy()
+        except Exception:
+            pass
+        os._exit(0)
 
 
 def main():
+    if not ensure_single_instance():
+        # Nếu ứng dụng đã đang chạy rồi, không mở thêm cửa sổ thứ hai đè lên
+        sys.exit(0)
     root = tk.Tk()
     app = IELTSCornerApp(root)
     root.mainloop()

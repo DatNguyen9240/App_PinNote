@@ -394,6 +394,11 @@
         color: #0f172a;
       }
 
+      .btn-close-red:hover {
+        background: #fee2e2 !important;
+        color: #ef4444 !important;
+      }
+
       /* Nội dung thẻ */
       .card-body {
         flex: 1;
@@ -648,7 +653,8 @@
           <div class="header-right">
             <button class="btn-icon" id="btn-toggle-footer" title="Ẩn/Hiện thanh nút bên dưới để tối đa diện tích chữ & hình">🔽</button>
             <span class="drag-hint">⠿ Kéo</span>
-            <button class="btn-icon" id="btn-minimize" title="Thu nhỏ">_</button>
+            <button class="btn-icon" id="btn-minimize" title="Thu nhỏ thành bong bóng tròn">_</button>
+            <button class="btn-icon btn-close-red" id="btn-close-widget" title="Tắt hoàn toàn widget (Có thể bật lại từ biểu tượng tiện ích)">✕</button>
           </div>
         </div>
 
@@ -753,6 +759,16 @@
     setupDrag(host, shadow.getElementById("drag-header"), cardEl);
     setupResize(host, cardEl, shadow.getElementById("resize-grip"));
     setupBubbleDragAndClick(host, cardEl, bubbleEl, shadow.getElementById("btn-minimize"));
+
+    const btnCloseWidget = shadow.getElementById("btn-close-widget");
+    if (btnCloseWidget) {
+      btnCloseWidget.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isEnabled = false;
+        chrome.storage.local.set({ isEnabled: false });
+        host.style.display = "none";
+      });
+    }
   }
 
   // --- CỐ ĐỊNH VÀ ÁP DỤNG TỌA ĐỘ AN TOÀN TRONG MÀN HÌNH ---
@@ -926,7 +942,86 @@
     if (btnHl) btnHl.addEventListener("click", applyHighlight);
     if (btnHlSplit) btnHlSplit.addEventListener("click", applyHighlight);
 
-    // Chức năng Dịch chuẩn ngữ cảnh (IELTS Context Translation)
+    // Chức năng Dịch chuẩn ngữ cảnh & Tìm đối ứng song ngữ 2 chiều
+    let currentAlignSegments = [];
+
+    function highlightAlignFromEn() {
+      if (!currentAlignSegments || currentAlignSegments.length === 0 || !transBody) return;
+      let sel = window.getSelection().toString().trim();
+      if (!sel) {
+        transBody.querySelectorAll(".trans-seg").forEach(el => {
+          el.style.background = "transparent";
+          el.style.color = "inherit";
+        });
+        return;
+      }
+      let firstMatch = null;
+      currentAlignSegments.forEach((seg, idx) => {
+        let span = transBody.querySelector(`.trans-seg[data-idx="${idx}"]`);
+        if (!span) return;
+        if (seg.en.toLowerCase().includes(sel.toLowerCase()) || sel.toLowerCase().includes(seg.en.toLowerCase())) {
+          span.style.background = "#fed7aa";
+          span.style.color = "#7c2d12";
+          span.style.borderRadius = "3px";
+          if (!firstMatch) firstMatch = span;
+        } else {
+          span.style.background = "transparent";
+          span.style.color = "inherit";
+        }
+      });
+      if (firstMatch) firstMatch.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function highlightAlignFromVi(idx) {
+      if (!currentAlignSegments || !currentAlignSegments[idx] || !transBody) return;
+      transBody.querySelectorAll(".trans-seg").forEach(el => {
+        el.style.background = "transparent";
+        el.style.color = "inherit";
+      });
+      let activeSpan = transBody.querySelector(`.trans-seg[data-idx="${idx}"]`);
+      if (activeSpan) {
+        activeSpan.style.background = "#fed7aa";
+        activeSpan.style.color = "#7c2d12";
+        activeSpan.style.borderRadius = "3px";
+      }
+
+      let enSentence = currentAlignSegments[idx].en;
+      let fullText = textArea.innerText || textArea.textContent || "";
+      let pos = fullText.indexOf(enSentence);
+      if (pos !== -1) {
+        let selection = window.getSelection();
+        let range = document.createRange();
+        let nodeIterator = document.createNodeIterator(textArea, NodeFilter.SHOW_TEXT);
+        let textNode;
+        let currentOffset = 0;
+        let startNode = null, startOffset = 0, endNode = null, endOffset = 0;
+        while ((textNode = nodeIterator.nextNode())) {
+          let nextOffset = currentOffset + textNode.nodeValue.length;
+          if (!startNode && pos >= currentOffset && pos <= nextOffset) {
+            startNode = textNode;
+            startOffset = pos - currentOffset;
+          }
+          if (!endNode && (pos + enSentence.length) >= currentOffset && (pos + enSentence.length) <= nextOffset) {
+            endNode = textNode;
+            endOffset = (pos + enSentence.length) - currentOffset;
+            break;
+          }
+          currentOffset = nextOffset;
+        }
+        if (startNode && endNode) {
+          range.setStart(startNode, startOffset);
+          range.setEnd(endNode, endOffset);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          let rect = range.getBoundingClientRect();
+          textArea.scrollBy({ top: rect.top - textArea.getBoundingClientRect().top - 40, behavior: "smooth" });
+        }
+      }
+    }
+
+    textArea.addEventListener("mouseup", highlightAlignFromEn);
+    textArea.addEventListener("keyup", highlightAlignFromEn);
+
     function translateContext() {
       let queryText = window.getSelection().toString().trim();
       if (!queryText) {
@@ -935,14 +1030,29 @@
       if (!queryText) return;
 
       if (transDrawer) transDrawer.style.display = "flex";
-      if (transBody) transBody.textContent = "⏳ Đang phân tích ngữ cảnh và dịch...";
+      if (transBody) transBody.textContent = "⏳ Đang phân tích ngữ cảnh và dịch đối ứng song ngữ...";
 
       const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=vi&dt=t&dt=bd&dt=rm&q=" + encodeURIComponent(queryText);
       fetch(url)
         .then(r => r.json())
         .then(data => {
-          let translated = data[0].map(item => item[0]).filter(Boolean).join("");
-          let extra = "";
+          currentAlignSegments = [];
+          if (transBody) transBody.innerHTML = "";
+          let segments = (data[0] || []).filter(item => item && item[0] && item[1]);
+
+          segments.forEach((seg, idx) => {
+            let span = document.createElement("span");
+            span.className = "trans-seg";
+            span.dataset.idx = idx;
+            span.textContent = seg[0] + " ";
+            span.style.cursor = "pointer";
+            span.title = "Nhấp để tìm câu tiếng Anh tương ứng";
+            span.addEventListener("click", () => highlightAlignFromVi(idx));
+            span.addEventListener("mouseup", () => highlightAlignFromVi(idx));
+            if (transBody) transBody.appendChild(span);
+            currentAlignSegments.push({ en: seg[1].trim(), vi: seg[0].trim() });
+          });
+
           if (data.length > 1 && data[1]) {
             let lines = [];
             for (let pos of data[1]) {
@@ -951,10 +1061,14 @@
               lines.push(`• (${part}) ${meanings}`);
             }
             if (lines.length > 0) {
-              extra = "\n\n📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+              let div = document.createElement("div");
+              div.style.cssText = "margin-top: 8px; font-size: 11px; color: #64748b; white-space: pre-wrap;";
+              div.textContent = "\n📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+              if (transBody) transBody.appendChild(div);
             }
           }
-          if (transBody) transBody.textContent = translated + extra;
+
+          highlightAlignFromEn();
         })
         .catch(() => {
           if (transBody) transBody.textContent = "Không thể kết nối máy chủ dịch (vui lòng kiểm tra kết nối mạng).";
@@ -1283,6 +1397,14 @@
     let startX = 0, startY = 0;
     let startTime = 0;
     let initLeft = 0, initTop = 0;
+
+    bubble.title = "Nhấp chuột trái để mở lại thẻ (Chuột phải để tắt hoàn toàn)";
+    bubble.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      isEnabled = false;
+      chrome.storage.local.set({ isEnabled: false });
+      host.style.display = "none";
+    });
 
     btnMin.addEventListener("click", (e) => {
       e.stopPropagation();

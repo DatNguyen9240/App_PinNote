@@ -697,21 +697,115 @@
         floatingHlBar.style.display = "none";
       }
 
-      // DỊCH CHUẨN NGỮ CẢNH
+      // DỊCH CHUẨN NGỮ CẢNH & TÌM ĐỐI ỨNG SONG NGỮ 2 CHIỀU
+      let currentAlignSegments = [];
+
+      function highlightAlignFromEn() {
+        if (!currentAlignSegments || currentAlignSegments.length === 0) return;
+        let sel = window.getSelection().toString().trim();
+        if (!sel) {
+          transBody.querySelectorAll(".trans-seg").forEach(el => {
+            el.style.background = "transparent";
+            el.style.color = "inherit";
+          });
+          return;
+        }
+        let firstMatch = null;
+        currentAlignSegments.forEach((seg, idx) => {
+          let span = transBody.querySelector(`.trans-seg[data-idx="${idx}"]`);
+          if (!span) return;
+          if (seg.en.toLowerCase().includes(sel.toLowerCase()) || sel.toLowerCase().includes(seg.en.toLowerCase())) {
+            span.style.background = "#fed7aa";
+            span.style.color = "#7c2d12";
+            span.style.borderRadius = "3px";
+            if (!firstMatch) firstMatch = span;
+          } else {
+            span.style.background = "transparent";
+            span.style.color = "inherit";
+          }
+        });
+        if (firstMatch) firstMatch.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      function highlightAlignFromVi(idx) {
+        if (!currentAlignSegments || !currentAlignSegments[idx]) return;
+        transBody.querySelectorAll(".trans-seg").forEach(el => {
+          el.style.background = "transparent";
+          el.style.color = "inherit";
+        });
+        let activeSpan = transBody.querySelector(`.trans-seg[data-idx="${idx}"]`);
+        if (activeSpan) {
+          activeSpan.style.background = "#fed7aa";
+          activeSpan.style.color = "#7c2d12";
+          activeSpan.style.borderRadius = "3px";
+        }
+
+        let enSentence = currentAlignSegments[idx].en;
+        let fullText = textEditor.innerText;
+        let pos = fullText.indexOf(enSentence);
+        if (pos !== -1) {
+          let selection = window.getSelection();
+          let range = document.createRange();
+          let nodeIterator = document.createNodeIterator(textEditor, NodeFilter.SHOW_TEXT);
+          let textNode;
+          let currentOffset = 0;
+          let startNode = null, startOffset = 0, endNode = null, endOffset = 0;
+          while ((textNode = nodeIterator.nextNode())) {
+            let nextOffset = currentOffset + textNode.nodeValue.length;
+            if (!startNode && pos >= currentOffset && pos <= nextOffset) {
+              startNode = textNode;
+              startOffset = pos - currentOffset;
+            }
+            if (!endNode && (pos + enSentence.length) >= currentOffset && (pos + enSentence.length) <= nextOffset) {
+              endNode = textNode;
+              endOffset = (pos + enSentence.length) - currentOffset;
+              break;
+            }
+            currentOffset = nextOffset;
+          }
+          if (startNode && endNode) {
+            range.setStart(startNode, startOffset);
+            range.setEnd(endNode, endOffset);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            let rect = range.getBoundingClientRect();
+            textEditor.scrollBy({ top: rect.top - textEditor.getBoundingClientRect().top - 40, behavior: "smooth" });
+          }
+        }
+      }
+
+      textEditor.addEventListener("mouseup", highlightAlignFromEn);
+      textEditor.addEventListener("keyup", highlightAlignFromEn);
+
       function translateContext() {
         let queryText = window.getSelection().toString().trim();
         if (!queryText) queryText = textEditor.innerText.trim();
         if (!queryText) return;
 
         transPanel.style.display = "flex";
-        transBody.textContent = "⏳ Đang phân tích và dịch chuẩn ngữ cảnh...";
+        transBody.textContent = "⏳ Đang phân tích ngữ cảnh và dịch đối ứng song ngữ...";
         floatingHlBar.style.display = "none";
 
         fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=vi&dt=t&dt=bd&dt=rm&q=" + encodeURIComponent(queryText))
           .then(r => r.json())
           .then(data => {
-            let translated = data[0].map(item => item[0]).filter(Boolean).join("");
-            let extra = "";
+            currentAlignSegments = [];
+            transBody.innerHTML = "";
+            let segments = (data[0] || []).filter(item => item && item[0] && item[1]);
+
+            segments.forEach((seg, idx) => {
+              let span = document.createElement("span");
+              span.className = "trans-seg";
+              span.dataset.idx = idx;
+              span.textContent = seg[0] + " ";
+              span.style.cursor = "pointer";
+              span.title = "Nhấp để tìm câu tiếng Anh tương ứng";
+              span.addEventListener("click", () => highlightAlignFromVi(idx));
+              span.addEventListener("mouseup", () => highlightAlignFromVi(idx));
+              transBody.appendChild(span);
+              currentAlignSegments.push({ en: seg[1].trim(), vi: seg[0].trim() });
+            });
+
             if (data.length > 1 && data[1]) {
               let lines = [];
               for (let pos of data[1]) {
@@ -719,9 +813,15 @@
                 let words = pos[1] ? pos[1].slice(0, 5).join(", ") : "";
                 lines.push(`• (${part}) ${words}`);
               }
-              if (lines.length) extra = "\n\n📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+              if (lines.length) {
+                let div = document.createElement("div");
+                div.style.cssText = "margin-top: 8px; font-size: 11px; color: #64748b; white-space: pre-wrap;";
+                div.textContent = "📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+                transBody.appendChild(div);
+              }
             }
-            transBody.textContent = translated + extra;
+
+            highlightAlignFromEn();
           })
           .catch(() => {
             transBody.textContent = "Không thể kết nối máy chủ dịch (vui lòng kiểm tra kết nối mạng).";
