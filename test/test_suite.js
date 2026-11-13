@@ -51,5 +51,17 @@ assert(appPy.includes("create_new_note") && appPy.includes("notes"), "Desktop Ap
 assert(standaloneHtml.includes("applyHighlight") && standaloneHtml.includes("hiliteColor"), "Web Standalone hỗ trợ Highlight nhiều màu và lưu trữ");
 assert(standaloneHtml.includes("createNewNote") && standaloneHtml.includes("notes"), "Web Standalone hỗ trợ tạo và chuyển đổi nhiều Note");
 assert(contentJs.includes("applyHighlight") && contentJs.includes("btn-hl"), "Chrome Extension hỗ trợ phím tắt và nút Highlight");
+assert(appPy.includes("translate_context") && appPy.includes("client=gtx"), "Desktop App hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(standaloneHtml.includes("translateContext") && standaloneHtml.includes("client=gtx"), "Web Standalone hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(contentJs.includes("translateContext") && contentJs.includes("btn-trans"), "Chrome Extension hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(appPy.includes("DetachedNoteWindow") && appPy.includes("detach_note") && appPy.includes("reattach_note"), "Desktop App hỗ trợ tách và gộp Note thành cửa sổ riêng biệt");
+assert(appPy.includes("on_tab_motion") && appPy.includes("ghost"), "Desktop App hỗ trợ nắm kéo chuột tab Note ra ngoài để tách cửa sổ (Tear-off tab)");
+assert(standaloneHtml.includes("detachNoteWeb"), "Web Standalone hỗ trợ mở Note trong cửa sổ riêng biệt");
+assert(appPy.includes("translate_context") && appPy.includes("client=gtx"), "Desktop App hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(standaloneHtml.includes("translateContext") && standaloneHtml.includes("client=gtx"), "Web Standalone hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(contentJs.includes("translateContext") && contentJs.includes("btn-trans"), "Chrome Extension hỗ trợ Dịch chuẩn ngữ cảnh IELTS (Ctrl + T)");
+assert(appPy.includes("DetachedNoteWindow") && appPy.includes("detach_note") && appPy.includes("reattach_note"), "Desktop App hỗ trợ tách và gộp Note thành cửa sổ riêng biệt");
+assert(appPy.includes("on_tab_motion") && appPy.includes("ghost"), "Desktop App hỗ trợ nắm kéo chuột tab Note ra ngoài để tách cửa sổ (Tear-off tab)");
+assert(standaloneHtml.includes("detachNoteWeb"), "Web Standalone hỗ trợ mở Note trong cửa sổ riêng biệt");
 
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);

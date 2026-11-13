@@ -73,7 +73,7 @@
       align-items: center;
       gap: 3px;
       overflow-x: auto;
-      max-width: 50%;
+      max-width: 48%;
       padding: 0 4px;
     }
 
@@ -239,6 +239,43 @@
       font-size: 26px;
     }
 
+    /* Bảng Dịch Chuẩn Ngữ Cảnh */
+    .trans-panel {
+      display: none;
+      flex-direction: column;
+      background: #f0fdf4;
+      border-top: 1px solid #bbf7d0;
+      max-height: 40%;
+      overflow: hidden;
+      user-select: text;
+    }
+
+    .trans-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background: #dcfce7;
+      font-size: 11px;
+      font-weight: 700;
+      color: #166534;
+    }
+
+    .trans-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .trans-body {
+      padding: 8px 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #0f172a;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
     /* Thanh chọn màu Highlight nổi khi bôi đen chữ */
     .floating-hl-bar {
       position: fixed;
@@ -247,8 +284,8 @@
       border: 1px solid #e2e8f0;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       border-radius: 20px;
-      padding: 3px 6px;
-      gap: 4px;
+      padding: 3px 8px;
+      gap: 5px;
       align-items: center;
       z-index: 10000;
       user-select: none;
@@ -278,7 +315,7 @@
       padding: 4px 0;
       z-index: 9999;
       font-size: 12px;
-      min-width: 180px;
+      min-width: 190px;
       user-select: none;
     }
 
@@ -322,6 +359,7 @@
 
     <!-- Công cụ bên phải -->
     <div class="tool-actions">
+      <button class="icon-btn" id="btn-trans" title="Dịch chuẩn ngữ cảnh (Ctrl+T)" style="color: #4f46e5;">🌐</button>
       <button class="icon-btn" id="btn-hl" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
       <button class="icon-btn" id="btn-tts" title="Nghe phát âm (Ctrl+D)">🔊</button>
       <button class="icon-btn" id="btn-font-plus" title="Tăng cỡ chữ">A+</button>
@@ -351,18 +389,34 @@
     </div>
   </main>
 
+  <!-- Bảng dịch chuẩn ngữ cảnh -->
+  <div class="trans-panel" id="trans-panel">
+    <div class="trans-header">
+      <span>🌐 Bản dịch chuẩn ngữ cảnh (Anh ➔ Việt):</span>
+      <div class="trans-actions">
+        <button class="icon-btn" id="btn-copy-trans" title="Sao chép" style="font-weight:600; color:#15803d;">📋 Chép</button>
+        <button class="icon-btn" id="btn-close-trans" title="Đóng bảng dịch" style="font-weight:bold; color:#64748b;">✕</button>
+      </div>
+    </div>
+    <div class="trans-body" id="trans-body"></div>
+  </div>
+
   <!-- Thanh chọn màu Highlight nhanh khi bôi đen -->
   <div class="floating-hl-bar" id="floating-hl-bar">
     <div class="hl-dot" style="background: #fef08a;" data-color="#fef08a" title="Vàng"></div>
     <div class="hl-dot" style="background: #bbf7d0;" data-color="#bbf7d0" title="Xanh lá"></div>
     <div class="hl-dot" style="background: #fbcfe8;" data-color="#fbcfe8" title="Hồng"></div>
     <div class="hl-dot" style="background: #bae6fd;" data-color="#bae6fd" title="Xanh lam"></div>
+    <button class="icon-btn" id="btn-float-trans" title="Dịch đoạn chọn" style="color: #4f46e5; font-weight: bold; margin-left: 2px;">🌐 Dịch</button>
     <button class="icon-btn" id="btn-remove-hl" title="Bỏ highlight" style="font-size: 10px; color: #dc2626;">✕</button>
   </div>
 
   <!-- Menu chuột phải -->
   <div class="context-menu" id="context-menu">
-    <div class="menu-item" id="ctx-new-note">➕ Tạo Note mới (Ctrl+N / Ctrl+T)</div>
+    <div class="menu-item" id="ctx-trans">🌐 Dịch chuẩn ngữ cảnh (Ctrl+T)</div>
+    <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản (Ctrl+D)</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" id="ctx-new-note">➕ Tạo Note mới (Ctrl+N)</div>
     <div class="menu-item" id="ctx-rename-note">✏️ Đổi tên Note hiện tại</div>
     <div class="menu-item" id="ctx-next-note">➡️ Chuyển sang Note tiếp (Ctrl+Tab)</div>
     <div class="menu-item danger-item" id="ctx-delete-note">🗑️ Xóa Note hiện tại (Ctrl+W)</div>
@@ -372,8 +426,6 @@
     <div class="menu-item" id="ctx-hl-pink">🌸 Highlight Hồng</div>
     <div class="menu-item" id="ctx-hl-blue">🔵 Highlight Xanh lam</div>
     <div class="menu-item" id="ctx-hl-remove">⚪ Bỏ Highlight</div>
-    <div class="menu-divider"></div>
-    <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản (Ctrl+D)</div>
     <div class="menu-divider"></div>
     <div class="menu-item" id="ctx-font-plus">➕ Phóng to chữ (A+)</div>
     <div class="menu-item" id="ctx-font-minus">➖ Thu nhỏ chữ (A-)</div>
@@ -395,7 +447,7 @@
 
       if (!notes || !Array.isArray(notes) || notes.length === 0) {
         let savedHtml = localStorage.getItem("ielts_desk_text_html") || "";
-        let defaultText = "Chào bạn! Ứng dụng đã hỗ trợ TẠO NHIỀU NOTE CÙNG LÚC:\n\n• Bấm nút [+] trên thanh tiêu đề (hoặc ấn Ctrl + N / Ctrl + T) để thêm Note mới.\n• Nhấp đúp chuột vào tên Note để đổi tên (VD: Task 1, Task 2, Vocab...).\n• Ấn Ctrl + Tab để chuyển nhanh giữa các Note.\n• Mỗi Note lưu riêng biệt: nội dung, ảnh đính kèm và các đoạn highlight.\n• Bôi đen chữ rồi ấn Ctrl + H để highlight, ấn Ctrl + Z để hủy highlight ngay lập tức.";
+        let defaultText = "Chào bạn! Ứng dụng đã hỗ trợ DỊCH CHUẨN NGỮ CẢNH & TẠO NHIỀU NOTE:\n\n• Bôi đen một từ/câu rồi ấn Ctrl + T (hoặc icon 🌐) để dịch chuẩn ngữ cảnh IELTS.\n• Bấm nút [+] để thêm Note mới, nhấp đúp chuột để đổi tên Note (VD: Task 1, Vocab...).\n• Bôi đen chữ rồi ấn Ctrl + H để highlight, ấn Ctrl + Z để hủy highlight tức thì.\n• Ấn 🔊 để nghe phát âm, bấm 🌓 để xem song song cả ảnh và chữ.";
         notes = [{
           id: "1",
           title: "Note 1",
@@ -405,7 +457,9 @@
         }];
       }
 
-      let activeNoteId = localStorage.getItem("ielts_desk_active_note") || notes[0].id;
+      const urlParams = new URLSearchParams(window.location.search);
+      const noteParam = urlParams.get("note");
+      let activeNoteId = noteParam || localStorage.getItem("ielts_desk_active_note") || notes[0].id;
       let fontSize = parseInt(localStorage.getItem("ielts_desk_font") || "14", 10);
       let isZen = localStorage.getItem("ielts_desk_zen") === "true";
 
@@ -421,6 +475,8 @@
       const emptyBox = document.getElementById("empty-image-box");
       const floatingHlBar = document.getElementById("floating-hl-bar");
       const contextMenu = document.getElementById("context-menu");
+      const transPanel = document.getElementById("trans-panel");
+      const transBody = document.getElementById("trans-body");
 
       let currentTab = "text";
       let currentImage = "";
@@ -475,6 +531,7 @@
 
         switchTab(currentTab, false);
         renderNoteTabs();
+        transPanel.style.display = "none";
         hlHistory = [];
         hlRedo = [];
       }
@@ -539,6 +596,10 @@
         switchNote(notes[nextIdx].id);
       }
 
+      function detachNoteWeb(nid) {
+        window.open(window.location.pathname + "?note=" + encodeURIComponent(nid), "_blank", "width=440,height=530,resizable=yes");
+      }
+
       function renderNoteTabs() {
         notesPillBar.innerHTML = "";
         notes.forEach((n, i) => {
@@ -552,6 +613,19 @@
           pill.addEventListener("click", () => switchNote(n.id));
           pill.addEventListener("dblclick", () => renameCurrentNote());
           notesPillBar.appendChild(pill);
+
+          if (isActive) {
+            let btnDetach = document.createElement("button");
+            btnDetach.className = "btn-icon";
+            btnDetach.style.cssText = "font-size:10px; padding: 1px 3px; margin-right: 2px; color: #4f46e5; border: none; background: transparent; cursor: pointer;";
+            btnDetach.textContent = "↗";
+            btnDetach.title = "Tách Note này thành cửa sổ riêng";
+            btnDetach.addEventListener("click", (e) => {
+              e.stopPropagation();
+              detachNoteWeb(n.id);
+            });
+            notesPillBar.appendChild(btnDetach);
+          }
         });
 
         let btnAdd = document.createElement("button");
@@ -561,6 +635,16 @@
         btnAdd.addEventListener("click", createNewNote);
         notesPillBar.appendChild(btnAdd);
       }
+
+      window.addEventListener("storage", (e) => {
+        if (e.key === "ielts_desk_notes") {
+          try {
+            notes = JSON.parse(e.newValue);
+            renderNoteTabs();
+            loadNoteUI();
+          } catch (err) {}
+        }
+      });
 
       function switchTab(tab, doSave = true) {
         currentTab = tab;
@@ -613,6 +697,51 @@
         floatingHlBar.style.display = "none";
       }
 
+      // DỊCH CHUẨN NGỮ CẢNH
+      function translateContext() {
+        let queryText = window.getSelection().toString().trim();
+        if (!queryText) queryText = textEditor.innerText.trim();
+        if (!queryText) return;
+
+        transPanel.style.display = "flex";
+        transBody.textContent = "⏳ Đang phân tích và dịch chuẩn ngữ cảnh...";
+        floatingHlBar.style.display = "none";
+
+        fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=vi&dt=t&dt=bd&dt=rm&q=" + encodeURIComponent(queryText))
+          .then(r => r.json())
+          .then(data => {
+            let translated = data[0].map(item => item[0]).filter(Boolean).join("");
+            let extra = "";
+            if (data.length > 1 && data[1]) {
+              let lines = [];
+              for (let pos of data[1]) {
+                let part = pos[0];
+                let words = pos[1] ? pos[1].slice(0, 5).join(", ") : "";
+                lines.push(`• (${part}) ${words}`);
+              }
+              if (lines.length) extra = "\n\n📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+            }
+            transBody.textContent = translated + extra;
+          })
+          .catch(() => {
+            transBody.textContent = "Không thể kết nối máy chủ dịch (vui lòng kiểm tra kết nối mạng).";
+          });
+      }
+
+      document.getElementById("btn-trans").addEventListener("click", translateContext);
+      document.getElementById("ctx-trans").addEventListener("click", translateContext);
+      document.getElementById("btn-float-trans").addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        translateContext();
+      });
+      document.getElementById("btn-close-trans").addEventListener("click", () => {
+        transPanel.style.display = "none";
+      });
+      document.getElementById("btn-copy-trans").addEventListener("click", () => {
+        let text = transBody.textContent.trim();
+        if (text) navigator.clipboard.writeText(text);
+      });
+
       // Phím tắt
       window.addEventListener("keydown", (e) => {
         if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
@@ -634,7 +763,10 @@
         } else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
           e.preventDefault();
           applyHighlight("#fef08a");
-        } else if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N" || e.key === "t" || e.key === "T")) {
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "t" || e.key === "T")) {
+          e.preventDefault();
+          translateContext();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N")) {
           e.preventDefault();
           createNewNote();
         } else if ((e.ctrlKey || e.metaKey) && (e.key === "w" || e.key === "W")) {
@@ -646,6 +778,8 @@
         } else if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
           e.preventDefault();
           speak();
+        } else if (e.key === "Escape") {
+          transPanel.style.display = "none";
         }
       });
 
@@ -663,7 +797,7 @@
           const range = sel.getRangeAt(0);
           const rect = range.getBoundingClientRect();
           if (rect.width > 0 && rect.top > 0) {
-            floatingHlBar.style.left = Math.max(10, rect.left + (rect.width / 2) - 60) + "px";
+            floatingHlBar.style.left = Math.max(10, rect.left + (rect.width / 2) - 80) + "px";
             floatingHlBar.style.top = Math.max(10, rect.top - 36) + "px";
             floatingHlBar.style.display = "flex";
           }

@@ -539,6 +539,64 @@
         user-select: none;
       }
 
+      /* Khung dịch chuẩn ngữ cảnh (Collapsible Drawer) */
+      .trans-drawer {
+        display: none;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 55%;
+        background: #f8fafc;
+        border-top: 1px solid #cbd5e1;
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+        flex-direction: column;
+        z-index: 50;
+        border-radius: 0 0 12px 12px;
+      }
+
+      .trans-drawer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 10px;
+        background: #f1f5f9;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #475569;
+      }
+
+      .trans-drawer-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .trans-drawer-btn {
+        background: none;
+        border: none;
+        font-size: 11px;
+        color: #4f46e5;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+
+      .trans-drawer-btn:hover {
+        background: #e2e8f0;
+      }
+
+      .trans-drawer-body {
+        padding: 8px 10px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #1e293b;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        user-select: text;
+        max-height: 160px;
+      }
+
       .resize-grip:hover {
         background: #4f46e5;
         color: #ffffff;
@@ -619,6 +677,7 @@
           <!-- Footer nút cho Text -->
           <div id="footer-text" style="display: ${activeTab === "text" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 4px;">
+              <button class="footer-btn" id="btn-trans" title="Dịch chuẩn ngữ cảnh (Ctrl+T)">🌐 Dịch</button>
               <button class="footer-btn" id="btn-hl" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
               <button class="footer-btn" id="btn-tts">🔊 Đọc</button>
               <button class="footer-btn" id="btn-font-minus" title="Thu nhỏ chữ">A-</button>
@@ -639,6 +698,7 @@
           <!-- Footer nút cho Split (Cả hai) -->
           <div id="footer-split" style="display: ${activeTab === "split" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 4px; align-items: center;">
+              <button class="footer-btn" id="btn-trans-split" title="Dịch chuẩn ngữ cảnh (Ctrl+T)">🌐 Dịch</button>
               <button class="footer-btn" id="btn-hl-split" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
               <button class="footer-btn" id="btn-tts-split">🔊 Đọc</button>
               <button class="footer-btn" id="btn-font-minus-split" title="Thu nhỏ chữ">A-</button>
@@ -653,6 +713,18 @@
               <button class="footer-btn btn-danger" id="btn-clear-image-split" title="Xóa ảnh">Xóa ảnh</button>
             </div>
           </div>
+        </div>
+
+        <!-- Khung dịch chuẩn ngữ cảnh (Drawer) -->
+        <div class="trans-drawer" id="trans-drawer">
+          <div class="trans-drawer-header">
+            <span>🌐 Dịch chuẩn ngữ cảnh (IELTS Context)</span>
+            <div class="trans-drawer-actions">
+              <button class="trans-drawer-btn" id="btn-copy-trans" title="Sao chép bản dịch">📋 Chép</button>
+              <button class="trans-drawer-btn" id="btn-close-trans" title="Đóng khung dịch (Esc)">✕</button>
+            </div>
+          </div>
+          <div class="trans-drawer-body" id="trans-body">Đang tải bản dịch...</div>
         </div>
 
         <!-- Góc co giãn phóng to/thu nhỏ -->
@@ -798,6 +870,12 @@
   // --- MỤC VĂN BẢN (TEXT) ---
   function setupTextControls(shadow) {
     const textArea = shadow.getElementById("text-area");
+    const btnTrans = shadow.getElementById("btn-trans");
+    const btnTransSplit = shadow.getElementById("btn-trans-split");
+    const transDrawer = shadow.getElementById("trans-drawer");
+    const transBody = shadow.getElementById("trans-body");
+    const btnCloseTrans = shadow.getElementById("btn-close-trans");
+    const btnCopyTrans = shadow.getElementById("btn-copy-trans");
     const btnHl = shadow.getElementById("btn-hl");
     const btnHlSplit = shadow.getElementById("btn-hl-split");
     const btnTts = shadow.getElementById("btn-tts");
@@ -848,11 +926,71 @@
     if (btnHl) btnHl.addEventListener("click", applyHighlight);
     if (btnHlSplit) btnHlSplit.addEventListener("click", applyHighlight);
 
-    // Phím tắt Ctrl + H để Highlight, Ctrl + Z để hoàn tác highlight
+    // Chức năng Dịch chuẩn ngữ cảnh (IELTS Context Translation)
+    function translateContext() {
+      let queryText = window.getSelection().toString().trim();
+      if (!queryText) {
+        queryText = (textArea.innerText || textArea.textContent || "").trim();
+      }
+      if (!queryText) return;
+
+      if (transDrawer) transDrawer.style.display = "flex";
+      if (transBody) transBody.textContent = "⏳ Đang phân tích ngữ cảnh và dịch...";
+
+      const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=vi&dt=t&dt=bd&dt=rm&q=" + encodeURIComponent(queryText);
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          let translated = data[0].map(item => item[0]).filter(Boolean).join("");
+          let extra = "";
+          if (data.length > 1 && data[1]) {
+            let lines = [];
+            for (let pos of data[1]) {
+              let part = pos[0];
+              let meanings = (pos[1] || []).slice(0, 5).join(", ");
+              lines.push(`• (${part}) ${meanings}`);
+            }
+            if (lines.length > 0) {
+              extra = "\n\n📚 Các nét nghĩa theo ngữ cảnh:\n" + lines.join("\n");
+            }
+          }
+          if (transBody) transBody.textContent = translated + extra;
+        })
+        .catch(() => {
+          if (transBody) transBody.textContent = "Không thể kết nối máy chủ dịch (vui lòng kiểm tra kết nối mạng).";
+        });
+    }
+
+    if (btnTrans) btnTrans.addEventListener("click", translateContext);
+    if (btnTransSplit) btnTransSplit.addEventListener("click", translateContext);
+    if (btnCloseTrans) {
+      btnCloseTrans.addEventListener("click", () => {
+        if (transDrawer) transDrawer.style.display = "none";
+      });
+    }
+    if (btnCopyTrans) {
+      btnCopyTrans.addEventListener("click", () => {
+        if (transBody && transBody.textContent) {
+          navigator.clipboard.writeText(transBody.textContent).then(() => {
+            btnCopyTrans.textContent = "✓ Đã chép";
+            setTimeout(() => { btnCopyTrans.textContent = "📋 Chép"; }, 1500);
+          });
+        }
+      });
+    }
+
+    // Phím tắt Ctrl + H để Highlight, Ctrl + T để Dịch, Ctrl + Z để hoàn tác highlight
     textArea.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
         e.preventDefault();
         applyHighlight();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "t" || e.key === "T")) {
+        e.preventDefault();
+        translateContext();
+      } else if (e.key === "Escape") {
+        if (transDrawer && transDrawer.style.display !== "none") {
+          transDrawer.style.display = "none";
+        }
       } else if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
         if (hlHistory.length > 0) {
           e.preventDefault();
