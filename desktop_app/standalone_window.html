@@ -93,7 +93,7 @@
       color: #0f172a;
     }
 
-    /* Khung nội dung chính: 100% diện tích cho văn bản & hình ảnh */
+    /* Khung nội dung chính */
     .main-viewport {
       flex: 1;
       display: flex;
@@ -119,7 +119,7 @@
       background: #94a3b8;
     }
 
-    /* Mục Văn Bản: Tràn viền hoàn toàn */
+    /* Mục Văn Bản: Hỗ trợ Highlight bằng contenteditable */
     .view-text {
       flex: 1;
       display: flex;
@@ -127,19 +127,21 @@
       overflow: hidden;
     }
 
-    .text-area {
+    .text-editor {
       flex: 1;
       width: 100%;
       border: none;
       outline: none;
       padding: 12px 14px;
       font-size: 14.5px;
-      line-height: 1.5;
+      line-height: 1.6;
       color: #0f172a;
-      resize: none;
       font-family: inherit;
       background: #ffffff;
       user-select: text;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
       -webkit-spellcheck: none;
     }
 
@@ -181,6 +183,34 @@
       font-size: 26px;
     }
 
+    /* Thanh chọn màu Highlight nổi khi bôi đen chữ */
+    .floating-hl-bar {
+      position: fixed;
+      display: none;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-radius: 20px;
+      padding: 3px 6px;
+      gap: 4px;
+      align-items: center;
+      z-index: 10000;
+      user-select: none;
+    }
+
+    .hl-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 1px solid rgba(0,0,0,0.1);
+      transition: transform 0.15s;
+    }
+
+    .hl-dot:hover {
+      transform: scale(1.2);
+    }
+
     /* Menu chuột phải tối giản */
     .context-menu {
       position: fixed;
@@ -192,7 +222,7 @@
       padding: 4px 0;
       z-index: 9999;
       font-size: 12px;
-      min-width: 160px;
+      min-width: 170px;
       user-select: none;
     }
 
@@ -231,6 +261,8 @@
     </div>
 
     <div class="tool-actions">
+      <!-- Nút Highlight nhanh -->
+      <button class="icon-btn" id="btn-hl" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
       <button class="icon-btn" id="btn-tts" title="Nghe phát âm (Ctrl+D)">🔊</button>
       <button class="icon-btn" id="btn-font-plus" title="Tăng cỡ chữ">A+</button>
       <button class="icon-btn" id="btn-font-minus" title="Giảm cỡ chữ">A-</button>
@@ -253,14 +285,29 @@
       </div>
     </div>
 
-    <!-- Văn bản (Không hề có gạch đỏ chính tả) -->
+    <!-- Văn bản (Hỗ trợ Highlight nhiều màu) -->
     <div class="view-text" id="view-text">
-      <textarea class="text-area" id="text-area" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây..."></textarea>
+      <div class="text-editor" id="text-editor" contenteditable="true" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false"></div>
     </div>
   </main>
 
+  <!-- Thanh chọn màu Highlight nhanh khi bôi đen -->
+  <div class="floating-hl-bar" id="floating-hl-bar">
+    <div class="hl-dot" style="background: #fef08a;" data-color="#fef08a" title="Vàng"></div>
+    <div class="hl-dot" style="background: #bbf7d0;" data-color="#bbf7d0" title="Xanh lá"></div>
+    <div class="hl-dot" style="background: #fbcfe8;" data-color="#fbcfe8" title="Hồng"></div>
+    <div class="hl-dot" style="background: #bae6fd;" data-color="#bae6fd" title="Xanh lam"></div>
+    <button class="icon-btn" id="btn-remove-hl" title="Bỏ highlight" style="font-size: 10px; color: #dc2626;">✕</button>
+  </div>
+
   <!-- Menu chuột phải -->
   <div class="context-menu" id="context-menu">
+    <div class="menu-item" id="ctx-hl-yellow">🟡 Highlight Vàng (Ctrl+H)</div>
+    <div class="menu-item" id="ctx-hl-green">🟢 Highlight Xanh lá</div>
+    <div class="menu-item" id="ctx-hl-pink">🌸 Highlight Hồng</div>
+    <div class="menu-item" id="ctx-hl-blue">🔵 Highlight Xanh lam</div>
+    <div class="menu-item" id="ctx-hl-remove">⚪ Bỏ Highlight</div>
+    <div class="menu-divider"></div>
     <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản</div>
     <div class="menu-divider"></div>
     <div class="menu-item" id="ctx-text">📝 Chỉ xem Chữ</div>
@@ -278,7 +325,8 @@
   <script>
     (function() {
       let activeTab = localStorage.getItem("ielts_desk_tab") || "text";
-      let savedText = localStorage.getItem("ielts_desk_text") || "Chào bạn! Giao diện đã được tối giản tối đa:\n\n• Toàn bộ màn hình dành trọn vẹn cho việc đọc chữ và xem ảnh.\n• Nhấn Ctrl + V để dán đoạn văn hoặc ảnh chụp màn hình.\n• Nhấp chuột phải vào bất cứ đâu để mở Menu (Đọc, Cỡ chữ, Chế độ...).\n• Bấm [🌓 Cả hai] để vừa nhìn đề bài vừa gõ bài làm.";
+      let savedHtml = localStorage.getItem("ielts_desk_text_html") || "";
+      let defaultText = "Chào bạn! Ứng dụng đã hỗ trợ tính năng Highlight từ vựng:\n\n• Bôi đen chữ rồi ấn Ctrl + H để tô màu vàng tức thì.\n• Hoặc chọn màu trên thanh nổi: Vàng 🟡, Xanh 🟢, Hồng 🌸, Xanh lam 🔵.\n• Mọi đoạn highlight sẽ được lưu tự động, mở lại không bị mất.\n• Bấm [🌓 Cả hai] để vừa nhìn đề bài vừa gõ bài làm.";
       let savedImage = localStorage.getItem("ielts_desk_image") || "";
       let fontSize = parseInt(localStorage.getItem("ielts_desk_font") || "14", 10);
       let isZen = localStorage.getItem("ielts_desk_zen") === "true";
@@ -289,15 +337,15 @@
       const tabSplit = document.getElementById("tab-split");
       const viewText = document.getElementById("view-text");
       const viewImage = document.getElementById("view-image");
-      const textArea = document.getElementById("text-area");
+      const textEditor = document.getElementById("text-editor");
       const imagePreview = document.getElementById("image-preview");
       const emptyBox = document.getElementById("empty-image-box");
+      const floatingHlBar = document.getElementById("floating-hl-bar");
       const contextMenu = document.getElementById("context-menu");
 
-      // Khởi tạo
-      textArea.spellcheck = false;
-      textArea.value = savedText;
-      textArea.style.fontSize = fontSize + "px";
+      // Khởi tạo text & font
+      textEditor.innerHTML = savedHtml || defaultText.replace(/\n/g, "<br>");
+      textEditor.style.fontSize = fontSize + "px";
 
       if (isZen) topToolbar.classList.add("hidden");
 
@@ -337,14 +385,100 @@
       tabSplit.addEventListener("click", () => switchTab("split"));
       switchTab(activeTab);
 
-      // Lưu chữ tự động
-      textArea.addEventListener("input", () => {
-        localStorage.setItem("ielts_desk_text", textArea.value);
+      // Lưu chữ tự động (lưu cả HTML chứa highlight)
+      function saveContent() {
+        localStorage.setItem("ielts_desk_text_html", textEditor.innerHTML);
+        localStorage.setItem("ielts_desk_text", textEditor.innerText);
+      }
+      textEditor.addEventListener("input", () => {
+        hlHistory = []; // Khi gõ chữ thì để Ctrl+Z hoàn tác chữ
+        saveContent();
+      });
+
+      // HÀM TÔ MÀU HIGHLIGHT & LỊCH SỬ HOÀN TÁC (CTRL + Z)
+      let hlHistory = [];
+      let hlRedo = [];
+
+      function applyHighlight(color) {
+        hlHistory.push(textEditor.innerHTML);
+        hlRedo = [];
+        document.execCommand("hiliteColor", false, color);
+        saveContent();
+        floatingHlBar.style.display = "none";
+      }
+
+      function removeHighlight() {
+        hlHistory.push(textEditor.innerHTML);
+        hlRedo = [];
+        document.execCommand("removeFormat", false, null);
+        saveContent();
+        floatingHlBar.style.display = "none";
+      }
+
+      // Xử lý phím tắt
+      window.addEventListener("keydown", (e) => {
+        // Hoàn tác Ctrl + Z: Nếu vừa highlight thì gỡ highlight ngay lập tức
+        if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+          if (hlHistory.length > 0) {
+            e.preventDefault();
+            hlRedo.push(textEditor.innerHTML);
+            textEditor.innerHTML = hlHistory.pop();
+            saveContent();
+            return;
+          }
+        } else if ((e.ctrlKey || e.metaKey) && (((e.key === "z" || e.key === "Z") && e.shiftKey) || e.key === "y" || e.key === "Y")) {
+          if (hlRedo.length > 0) {
+            e.preventDefault();
+            hlHistory.push(textEditor.innerHTML);
+            textEditor.innerHTML = hlRedo.pop();
+            saveContent();
+            return;
+          }
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+          e.preventDefault();
+          applyHighlight("#fef08a");
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
+          e.preventDefault();
+          speak();
+        }
+      });
+
+      document.getElementById("btn-hl").addEventListener("click", () => applyHighlight("#fef08a"));
+
+      // Thanh nổi xuất hiện khi bôi đen chữ
+      document.addEventListener("selectionchange", () => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+          floatingHlBar.style.display = "none";
+          return;
+        }
+
+        try {
+          const range = sel.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          if (rect.width > 0 && rect.top > 0) {
+            floatingHlBar.style.left = Math.max(10, rect.left + (rect.width / 2) - 60) + "px";
+            floatingHlBar.style.top = Math.max(10, rect.top - 36) + "px";
+            floatingHlBar.style.display = "flex";
+          }
+        } catch (err) {}
+      });
+
+      // Bấm vào chấm màu trên thanh nổi
+      document.querySelectorAll(".hl-dot").forEach(dot => {
+        dot.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          applyHighlight(dot.getAttribute("data-color"));
+        });
+      });
+      document.getElementById("btn-remove-hl").addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        removeHighlight();
       });
 
       // TTS
       function speak() {
-        const text = textArea.value.trim();
+        const text = textEditor.innerText.trim();
         if (!text || !("speechSynthesis" in window)) return;
         window.speechSynthesis.cancel();
         setTimeout(() => {
@@ -361,7 +495,7 @@
         const n = fontSize + delta;
         if (n >= 11 && n <= 28) {
           fontSize = n;
-          textArea.style.fontSize = fontSize + "px";
+          textEditor.style.fontSize = fontSize + "px";
           localStorage.setItem("ielts_desk_font", fontSize);
         }
       }
@@ -376,7 +510,6 @@
       }
       document.getElementById("btn-zen").addEventListener("click", toggleZen);
 
-      // Rê chuột lên đỉnh để hiện thanh công cụ khi ở Zen mode
       window.addEventListener("mousemove", (e) => {
         if (isZen) {
           if (e.clientY < 30) {
@@ -438,14 +571,21 @@
       // Menu chuột phải
       window.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 170) + "px";
-        contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 250) + "px";
+        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 180) + "px";
+        contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 300) + "px";
         contextMenu.style.display = "block";
       });
 
       window.addEventListener("click", () => {
         contextMenu.style.display = "none";
       });
+
+      // Menu Context actions
+      document.getElementById("ctx-hl-yellow").addEventListener("click", () => applyHighlight("#fef08a"));
+      document.getElementById("ctx-hl-green").addEventListener("click", () => applyHighlight("#bbf7d0"));
+      document.getElementById("ctx-hl-pink").addEventListener("click", () => applyHighlight("#fbcfe8"));
+      document.getElementById("ctx-hl-blue").addEventListener("click", () => applyHighlight("#bae6fd"));
+      document.getElementById("ctx-hl-remove").addEventListener("click", removeHighlight);
 
       document.getElementById("ctx-tts").addEventListener("click", speak);
       document.getElementById("ctx-text").addEventListener("click", () => switchTab("text"));
@@ -455,8 +595,8 @@
       document.getElementById("ctx-font-minus").addEventListener("click", () => adjustFont(-2));
       document.getElementById("ctx-zen").addEventListener("click", toggleZen);
       document.getElementById("ctx-clear-text").addEventListener("click", () => {
-        textArea.value = "";
-        localStorage.setItem("ielts_desk_text", "");
+        textEditor.innerHTML = "";
+        saveContent();
       });
       document.getElementById("ctx-clear-image").addEventListener("click", () => {
         savedImage = "";

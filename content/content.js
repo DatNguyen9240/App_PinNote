@@ -88,8 +88,12 @@
       if (shadow) {
         const textArea = shadow.getElementById("text-area");
         const isActivelyTyping = document.hasFocus() && shadow.activeElement === textArea;
-        if (textArea && !isActivelyTyping && textArea.value !== savedText) {
-          textArea.value = savedText;
+        if (textArea && !isActivelyTyping) {
+          if (textArea.tagName === "TEXTAREA" && textArea.value !== savedText) {
+            textArea.value = savedText;
+          } else if (textArea.innerHTML !== savedText) {
+            textArea.innerHTML = savedText;
+          }
         }
       }
     }
@@ -185,8 +189,12 @@
           savedText = data.savedText;
           const textArea = shadow.getElementById("text-area");
           const isActivelyTyping = document.hasFocus() && shadow.activeElement === textArea;
-          if (textArea && !isActivelyTyping && textArea.value !== savedText) {
-            textArea.value = savedText;
+          if (textArea && !isActivelyTyping) {
+            if (textArea.tagName === "TEXTAREA" && textArea.value !== savedText) {
+              textArea.value = savedText;
+            } else if (textArea.innerHTML !== savedText) {
+              textArea.innerHTML = savedText;
+            }
           }
         }
 
@@ -416,10 +424,13 @@
         font-size: 14px;
         line-height: 1.48;
         color: #0f172a;
-        resize: none;
         outline: none;
         font-family: inherit;
         background: #ffffff;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        user-select: text;
         -webkit-spellcheck: none;
       }
 
@@ -596,9 +607,9 @@
             </div>
           </div>
 
-          <!-- MỤC 1: VĂN BẢN (loại bỏ hoàn toàn gạch đỏ chính tả bằng spellcheck="false") -->
+          <!-- MỤC 1: VĂN BẢN (Hỗ trợ Highlight & tắt spellcheck) -->
           <div class="view-text" id="view-text" style="display: ${activeTab === "text" || activeTab === "split" ? "flex" : "none"}">
-            <textarea class="text-area" id="text-area" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây...">${savedText}</textarea>
+            <div class="text-area" id="text-area" contenteditable="true" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây..."></div>
           </div>
 
         </div>
@@ -608,6 +619,7 @@
           <!-- Footer nút cho Text -->
           <div id="footer-text" style="display: ${activeTab === "text" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 4px;">
+              <button class="footer-btn" id="btn-hl" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
               <button class="footer-btn" id="btn-tts">🔊 Đọc</button>
               <button class="footer-btn" id="btn-font-minus" title="Thu nhỏ chữ">A-</button>
               <button class="footer-btn" id="btn-font-plus" title="Phóng to chữ">A+</button>
@@ -627,6 +639,7 @@
           <!-- Footer nút cho Split (Cả hai) -->
           <div id="footer-split" style="display: ${activeTab === "split" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 4px; align-items: center;">
+              <button class="footer-btn" id="btn-hl-split" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
               <button class="footer-btn" id="btn-tts-split">🔊 Đọc</button>
               <button class="footer-btn" id="btn-font-minus-split" title="Thu nhỏ chữ">A-</button>
               <button class="footer-btn" id="btn-font-plus-split" title="Phóng to chữ">A+</button>
@@ -785,6 +798,8 @@
   // --- MỤC VĂN BẢN (TEXT) ---
   function setupTextControls(shadow) {
     const textArea = shadow.getElementById("text-area");
+    const btnHl = shadow.getElementById("btn-hl");
+    const btnHlSplit = shadow.getElementById("btn-hl-split");
     const btnTts = shadow.getElementById("btn-tts");
     const btnTtsSplit = shadow.getElementById("btn-tts-split");
     const btnClearText = shadow.getElementById("btn-clear-text");
@@ -803,20 +818,53 @@
     textArea.style.fontSize = `${fontSize}px`;
 
     if (savedText) {
-      textArea.value = savedText;
+      if (savedText.includes("<") && savedText.includes(">")) {
+        textArea.innerHTML = savedText;
+      } else {
+        textArea.innerHTML = savedText.replace(/\n/g, "<br>");
+      }
     }
 
     // Hàm lưu văn bản tức thời
     function saveTextNow() {
       if (!textArea) return;
-      const current = textArea.value;
+      const current = textArea.innerHTML || textArea.innerText || "";
       savedText = current;
       try {
         chrome.storage.local.set({ savedText: current });
       } catch (e) {}
     }
 
+    // Chức năng Highlight màu vàng & Hoàn tác Ctrl + Z
+    let hlHistory = [];
+
+    function applyHighlight() {
+      hlHistory.push(textArea.innerHTML);
+      document.execCommand("hiliteColor", false, "#fef08a");
+      isUserDirty = true;
+      saveTextNow();
+    }
+
+    if (btnHl) btnHl.addEventListener("click", applyHighlight);
+    if (btnHlSplit) btnHlSplit.addEventListener("click", applyHighlight);
+
+    // Phím tắt Ctrl + H để Highlight, Ctrl + Z để hoàn tác highlight
+    textArea.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        applyHighlight();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+        if (hlHistory.length > 0) {
+          e.preventDefault();
+          textArea.innerHTML = hlHistory.pop();
+          isUserDirty = true;
+          saveTextNow();
+        }
+      }
+    });
+
     function onUserTyping() {
+      hlHistory = [];
       isUserDirty = true;
       saveTextNow();
     }
@@ -834,7 +882,7 @@
 
     // Khi người dùng bấm xóa chữ
     function clearTextAction() {
-      textArea.value = "";
+      textArea.innerHTML = "";
       savedText = "";
       isUserDirty = true;
       chrome.storage.local.set({ savedText: "" });
@@ -869,7 +917,7 @@
 
     // Phát âm đoạn văn
     function playSpeech() {
-      const text = textArea.value.trim();
+      const text = (textArea.innerText || textArea.textContent || "").trim();
       if (!text || !("speechSynthesis" in window)) return;
       window.speechSynthesis.cancel();
       setTimeout(() => {

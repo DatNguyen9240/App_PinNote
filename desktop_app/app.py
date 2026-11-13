@@ -1,11 +1,13 @@
 """
-IELTS Corner - Desktop Widget (Phiên bản Tối Giản - Tập Trung 100% Nội Dung)
-- Thiết kế Zen Mode: Loại bỏ toàn bộ nút bấm rườm rà, dành 100% diện tích cho chữ và ảnh.
-- Thanh công cụ siêu mỏng tinh tế ở đỉnh (có thể ẩn hoàn toàn).
-- Menu chuột phải tiện lợi: Đầy đủ tính năng Đọc, Đổi cỡ chữ, Chuyển chế độ xem, Ghim...
+IELTS Corner - Desktop Widget (Phiên bản Tối Giản + Highlight + Hoàn Tác Ctrl + Z)
+- Hỗ trợ hoàn tác (Ctrl + Z): Khi vừa highlight xong, ấn Ctrl + Z sẽ mất màu highlight ngay lập tức!
+- Hỗ trợ làm lại (Ctrl + Y hoặc Ctrl + Shift + Z).
+- Chức năng Highlight: Màu Vàng 🟡, Xanh lá 🟢, Hồng 🌸, Xanh lam 🔵.
+- Phím tắt Ctrl + H để tô màu tức thì đoạn chữ đang chọn.
+- Menu chuột phải có đầy đủ tùy chọn màu highlight & xóa highlight.
+- Lưu lại toàn bộ các đoạn đã highlight khi tắt/mở app.
+- Thiết kế Zen Mode tối giản 100% diện tích cho nội dung.
 - Always-on-top: Luôn nổi trên Word, PDF, Chrome, Desktop.
-- Dán thông minh Ctrl + V: Tự nhận diện ảnh chụp màn hình hoặc văn bản.
-- Tràn viền, không viền đen bao quanh.
 """
 
 import sys
@@ -38,6 +40,12 @@ class IELTSCornerApp:
         self.current_image_data = None
         self.zoom_mode = "fit"
         self.is_zen_mode = False
+        self.saved_highlights = []
+
+        # Lịch sử hoàn tác (Undo/Redo) cho cả Highlight và Text
+        self.action_history = []
+        self.redo_history = []
+        self.hl_counter = 0
 
         # Đọc dữ liệu
         self.load_data()
@@ -45,14 +53,33 @@ class IELTSCornerApp:
         # Xây dựng giao diện tối giản
         self.create_minimal_ui()
 
-        # Phím tắt
+        # Cấu hình màu highlight cho Text widget
+        self.setup_highlight_tags()
+
+        # Áp dụng highlights đã lưu
+        self.apply_saved_highlights()
+
+        # Phím tắt toàn cục
         self.root.bind("<Control-v>", self.on_paste_global)
         self.root.bind("<Control-V>", self.on_paste_global)
+        self.root.bind("<Control-h>", lambda e: self.highlight_selection("yellow"))
+        self.root.bind("<Control-H>", lambda e: self.highlight_selection("yellow"))
+        self.root.bind("<Control-z>", self.on_undo)
+        self.root.bind("<Control-Z>", self.on_undo)
+        self.root.bind("<Control-y>", self.on_redo)
+        self.root.bind("<Control-Y>", self.on_redo)
         self.root.bind("<Control-plus>", lambda e: self.change_font_size(2))
         self.root.bind("<Control-equal>", lambda e: self.change_font_size(2))
         self.root.bind("<Control-minus>", lambda e: self.change_font_size(-2))
         self.root.bind("<Control-d>", lambda e: self.play_tts())
         self.root.bind("<Control-D>", lambda e: self.play_tts())
+
+        # Gắn phím tắt trực tiếp lên Text editor để chặn Ctrl+Z mặc định
+        self.text_editor.bind("<Control-z>", self.on_undo)
+        self.text_editor.bind("<Control-Z>", self.on_undo)
+        self.text_editor.bind("<Control-y>", self.on_redo)
+        self.text_editor.bind("<Control-Y>", self.on_redo)
+        self.text_editor.bind("<Key>", self.on_key_press)
 
         # Menu chuột phải
         self.create_context_menu()
@@ -68,12 +95,13 @@ class IELTSCornerApp:
     def load_data(self):
         default_geometry = "420x500+880+160"
         self.saved_text = (
-            "Chào bạn! Giao diện đã được tối giản tối đa:\n\n"
-            "• Toàn bộ màn hình dành trọn vẹn cho việc đọc chữ và xem ảnh.\n"
-            "• Nhấn Ctrl + V để dán đoạn văn hoặc ảnh chụp màn hình.\n"
-            "• Nhấp chuột phải vào bất cứ đâu để mở Menu (Đọc, Cỡ chữ, Chế độ...).\n"
-            "• Bấm nút 🌓 ở góc trên để xem song song cả đề bài và bài làm.\n"
-            "• Bấm 📌 để ghim luôn nổi trên Word, PDF, Chrome."
+            "Chào bạn! Ứng dụng đã hỗ trợ tính năng Highlight và Hoàn tác (Undo):\n\n"
+            "• Bôi đen chữ rồi ấn Ctrl + H để tô màu vàng.\n"
+            "• Ấn Ctrl + Z ngay sau khi highlight thì màu tô sẽ biến mất ngay lập tức!\n"
+            "• Ấn Ctrl + Y để làm lại (Redo) thao tác vừa hoàn tác.\n"
+            "• Nhấp chuột phải để chọn các màu khác: Vàng 🟡, Xanh 🟢, Hồng 🌸, Xanh lam 🔵.\n"
+            "• Các đoạn highlight sẽ được lưu tự động, mở lại không bị mất.\n"
+            "• Bấm 🌓 ở góc trên để xem song song cả đề bài và bài làm."
         )
 
         if os.path.exists(DATA_FILE):
@@ -86,6 +114,7 @@ class IELTSCornerApp:
                     self.active_tab = data.get("active_tab", "text")
                     self.is_topmost = data.get("is_topmost", True)
                     self.is_zen_mode = data.get("is_zen_mode", False)
+                    self.saved_highlights = data.get("highlights", [])
 
                     img_b64 = data.get("image_base64", "")
                     if img_b64:
@@ -105,6 +134,19 @@ class IELTSCornerApp:
         try:
             geom = self.root.geometry()
             text_content = self.text_editor.get("1.0", tk.END).strip()
+
+            # Lấy toàn bộ các đoạn highlight
+            highlights = []
+            for color in ["yellow", "green", "pink", "blue"]:
+                tag_name = f"hl_{color}"
+                ranges = self.text_editor.tag_ranges(tag_name)
+                for i in range(0, len(ranges), 2):
+                    highlights.append({
+                        "color": color,
+                        "start": str(ranges[i]),
+                        "end": str(ranges[i+1])
+                    })
+
             data = {
                 "geometry": geom,
                 "text": text_content,
@@ -112,6 +154,7 @@ class IELTSCornerApp:
                 "active_tab": self.active_tab,
                 "is_topmost": self.is_topmost,
                 "is_zen_mode": self.is_zen_mode,
+                "highlights": highlights,
                 "image_base64": self.current_image_data or ""
             }
             with open(DATA_FILE, "w", encoding="utf-8") as f:
@@ -119,13 +162,186 @@ class IELTSCornerApp:
         except Exception:
             pass
 
+    def setup_highlight_tags(self):
+        self.text_editor.tag_configure("hl_yellow", background="#fef08a", foreground="#0f172a")
+        self.text_editor.tag_configure("hl_green", background="#bbf7d0", foreground="#0f172a")
+        self.text_editor.tag_configure("hl_pink", background="#fbcfe8", foreground="#0f172a")
+        self.text_editor.tag_configure("hl_blue", background="#bae6fd", foreground="#0f172a")
+
+    def apply_saved_highlights(self):
+        for hl in self.saved_highlights:
+            try:
+                color = hl.get("color", "yellow")
+                start = hl.get("start")
+                end = hl.get("end")
+                if start and end:
+                    self.text_editor.tag_add(f"hl_{color}", start, end)
+            except Exception:
+                pass
+
+    def on_key_press(self, event):
+        # Theo dõi gõ chữ để phối hợp với lịch sử Ctrl + Z
+        if event.state & 4: # Nhấn Ctrl
+            return
+        if (event.char and event.char.isprintable()) or event.keysym in ("BackSpace", "Delete", "Return"):
+            if not self.action_history or self.action_history[-1] != "text":
+                self.action_history.append("text")
+                self.redo_history.clear()
+
+    def highlight_selection(self, color="yellow"):
+        try:
+            sel_start = self.text_editor.index(tk.SEL_FIRST)
+            sel_end = self.text_editor.index(tk.SEL_LAST)
+        except tk.TclError:
+            return
+
+        self.hl_counter += 1
+        ms = f"hl_s_{self.hl_counter}"
+        me = f"hl_e_{self.hl_counter}"
+        self.text_editor.mark_set(ms, sel_start)
+        self.text_editor.mark_set(me, sel_end)
+        self.text_editor.mark_gravity(ms, tk.LEFT)
+        self.text_editor.mark_gravity(me, tk.RIGHT)
+
+        tag_to_apply = f"hl_{color}"
+        current_tags = self.text_editor.tag_names(sel_start)
+
+        if tag_to_apply in current_tags:
+            # Gỡ màu (toggle off)
+            self.text_editor.tag_remove(tag_to_apply, sel_start, sel_end)
+            self.action_history.append({
+                "type": "highlight",
+                "mark_start": ms,
+                "mark_end": me,
+                "added_color": None,
+                "removed_color": color,
+                "old_tags": []
+            })
+        else:
+            old_tags = []
+            for c in ["yellow", "green", "pink", "blue"]:
+                tname = f"hl_{c}"
+                if tname in current_tags:
+                    old_tags.append(c)
+                    self.text_editor.tag_remove(tname, sel_start, sel_end)
+            
+            self.text_editor.tag_add(tag_to_apply, sel_start, sel_end)
+            self.action_history.append({
+                "type": "highlight",
+                "mark_start": ms,
+                "mark_end": me,
+                "added_color": color,
+                "removed_color": None,
+                "old_tags": old_tags
+            })
+
+        self.redo_history.clear()
+        self.save_data()
+
+    def remove_highlight_selection(self):
+        try:
+            sel_start = self.text_editor.index(tk.SEL_FIRST)
+            sel_end = self.text_editor.index(tk.SEL_LAST)
+        except tk.TclError:
+            return
+
+        current_tags = self.text_editor.tag_names(sel_start)
+        old_tags = []
+        for c in ["yellow", "green", "pink", "blue"]:
+            tname = f"hl_{c}"
+            if tname in current_tags:
+                old_tags.append(c)
+                self.text_editor.tag_remove(tname, sel_start, sel_end)
+
+        if old_tags:
+            self.hl_counter += 1
+            ms = f"hl_s_{self.hl_counter}"
+            me = f"hl_e_{self.hl_counter}"
+            self.text_editor.mark_set(ms, sel_start)
+            self.text_editor.mark_set(me, sel_end)
+            self.text_editor.mark_gravity(ms, tk.LEFT)
+            self.text_editor.mark_gravity(me, tk.RIGHT)
+
+            self.action_history.append({
+                "type": "highlight",
+                "mark_start": ms,
+                "mark_end": me,
+                "added_color": None,
+                "removed_color": None,
+                "old_tags": old_tags
+            })
+            self.redo_history.clear()
+            self.save_data()
+
+    def on_undo(self, event=None):
+        """Khi ấn Ctrl + Z: Hoàn tác highlight nếu vừa highlight xong, hoặc hoàn tác chữ"""
+        if self.action_history and isinstance(self.action_history[-1], dict) and self.action_history[-1].get("type") == "highlight":
+            action = self.action_history.pop()
+            try:
+                start = self.text_editor.index(action["mark_start"])
+                end = self.text_editor.index(action["mark_end"])
+
+                # Nếu vừa tô màu thì gỡ màu bỏ đi
+                if action.get("added_color"):
+                    self.text_editor.tag_remove(f"hl_{action['added_color']}", start, end)
+                
+                # Nếu vừa gỡ màu thì tô lại
+                if action.get("removed_color"):
+                    self.text_editor.tag_add(f"hl_{action['removed_color']}", start, end)
+
+                # Khôi phục các màu cũ trước đó nếu có
+                for c in action.get("old_tags", []):
+                    self.text_editor.tag_add(f"hl_{c}", start, end)
+
+                self.redo_history.append(action)
+                self.save_data()
+            except Exception:
+                pass
+            return "break"
+        else:
+            if self.action_history and self.action_history[-1] == "text":
+                self.action_history.pop()
+            try:
+                self.text_editor.edit_undo()
+                self.save_data()
+            except tk.TclError:
+                pass
+            return "break"
+
+    def on_redo(self, event=None):
+        """Khi ấn Ctrl + Y hoặc Ctrl + Shift + Z: Làm lại thao tác vừa hoàn tác"""
+        if self.redo_history and isinstance(self.redo_history[-1], dict) and self.redo_history[-1].get("type") == "highlight":
+            action = self.redo_history.pop()
+            try:
+                start = self.text_editor.index(action["mark_start"])
+                end = self.text_editor.index(action["mark_end"])
+
+                for c in ["yellow", "green", "pink", "blue"]:
+                    self.text_editor.tag_remove(f"hl_{c}", start, end)
+
+                if action.get("added_color"):
+                    self.text_editor.tag_add(f"hl_{action['added_color']}", start, end)
+
+                self.action_history.append(action)
+                self.save_data()
+            except Exception:
+                pass
+            return "break"
+        else:
+            try:
+                self.text_editor.edit_redo()
+                self.save_data()
+            except tk.TclError:
+                pass
+            return "break"
+
     def create_minimal_ui(self):
-        # 1. THANH CÔNG CỤ SIÊU MỎNG (Chỉ cao 26px, trong suốt và hòa vào nền)
+        # 1. THANH CÔNG CỤ SIÊU MỎNG (Chỉ cao 26px)
         self.top_bar = tk.Frame(self.root, bg="#f8fafc", height=26)
         if not self.is_zen_mode:
             self.top_bar.pack(fill=tk.X, side=tk.TOP)
 
-        # Nhóm chọn chế độ xem dạng Icon siêu gọn
+        # Tabs siêu nhỏ
         mode_frame = tk.Frame(self.top_bar, bg="#f8fafc")
         mode_frame.pack(side=tk.LEFT, padx=6, pady=2)
 
@@ -156,9 +372,17 @@ class IELTSCornerApp:
         self.btn_mode_split.pack(side=tk.LEFT, padx=1)
         self.btn_mode_split.bind("<Button-1>", lambda e: self.switch_tab("split"))
 
-        # Nhóm thao tác bên phải: 🔊 Đọc | 📌 Ghim | ⋯ Menu
+        # Thao tác bên phải: 🖍️ Highlight | 🔊 Đọc | 📌 Ghim | ⋯ Menu
         actions_frame = tk.Frame(self.top_bar, bg="#f8fafc")
         actions_frame.pack(side=tk.RIGHT, padx=6)
+
+        # Nút Highlight nhanh màu vàng
+        self.btn_hl_icon = tk.Label(
+            actions_frame, text="🖍️", font=("Segoe UI", 9),
+            bg="#f8fafc", fg="#334155", padx=4, pady=2, cursor="hand2"
+        )
+        self.btn_hl_icon.pack(side=tk.LEFT, padx=2)
+        self.btn_hl_icon.bind("<Button-1>", lambda e: self.highlight_selection("yellow"))
 
         self.btn_tts_icon = tk.Label(
             actions_frame, text="🔊", font=("Segoe UI", 9),
@@ -182,7 +406,7 @@ class IELTSCornerApp:
         self.btn_menu_icon.pack(side=tk.LEFT, padx=2)
         self.btn_menu_icon.bind("<Button-1>", lambda e: self.show_context_menu(e))
 
-        # 2. KHUNG NỘI DUNG CHÍNH (TRÀN VIỀN 100%, KHÔNG CÓ VIỀN ĐEN HAY PADDING DÀY)
+        # 2. KHUNG NỘI DUNG CHÍNH (TRÀN VIỀN 100%)
         self.content_frame = tk.Frame(self.root, bg="#ffffff")
         self.content_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -197,7 +421,7 @@ class IELTSCornerApp:
         self.image_label.bind("<Button-1>", self.on_image_click)
         self.image_label.bind("<Button-3>", self.show_context_menu)
 
-        # Khung Chữ (Tràn viền, không viền hộp thô)
+        # Khung Chữ (Tràn viền, không viền đen)
         self.text_container = tk.Frame(self.content_frame, bg="#ffffff")
         
         self.text_scrollbar = tk.Scrollbar(self.text_container, width=5)
@@ -224,7 +448,7 @@ class IELTSCornerApp:
         self.text_editor.insert("1.0", self.saved_text)
         self.text_editor.bind("<Button-3>", self.show_context_menu)
 
-        # Rê chuột vào đỉnh cửa sổ để hiện thanh công cụ khi ở chế độ Zen Mode
+        # Rê chuột lên đỉnh để hiện thanh công cụ khi ở chế độ Zen Mode
         self.root.bind("<Motion>", self.check_hover_top_bar)
 
     def check_hover_top_bar(self, event):
@@ -238,6 +462,18 @@ class IELTSCornerApp:
 
     def create_context_menu(self):
         self.menu = tk.Menu(self.root, tearoff=0, font=("Segoe UI", 9))
+        
+        # Nhóm Highlight
+        hl_menu = tk.Menu(self.menu, tearoff=0, font=("Segoe UI", 9))
+        hl_menu.add_command(label="🟡 Màu Vàng (Ctrl+H)", command=lambda: self.highlight_selection("yellow"))
+        hl_menu.add_command(label="🟢 Màu Xanh lá", command=lambda: self.highlight_selection("green"))
+        hl_menu.add_command(label="🌸 Màu Hồng", command=lambda: self.highlight_selection("pink"))
+        hl_menu.add_command(label="🔵 Màu Xanh lam", command=lambda: self.highlight_selection("blue"))
+        hl_menu.add_separator()
+        hl_menu.add_command(label="⚪ Bỏ Highlight đoạn chọn", command=self.remove_highlight_selection)
+        
+        self.menu.add_cascade(label="🖍️ Tô màu Highlight", menu=hl_menu)
+        self.menu.add_command(label="↩️ Hoàn tác / Undo (Ctrl+Z)", command=self.on_undo)
         self.menu.add_command(label="🔊 Nghe đọc đoạn văn (Ctrl+D)", command=self.play_tts)
         self.menu.add_separator()
 
@@ -248,15 +484,15 @@ class IELTSCornerApp:
         self.menu.add_separator()
 
         # Cỡ chữ
-        self.menu.add_command(label="➕ Phóng to chữ (A+)", command=lambda: self.change_font_size(2))
-        self.menu.add_command(label="➖ Thu nhỏ chữ (A-)", command=lambda: self.change_font_size(-2))
+        self.menu.add_command(label="➕ Phóng to chữ (Ctrl +)", command=lambda: self.change_font_size(2))
+        self.menu.add_command(label="➖ Thu nhỏ chữ (Ctrl -)", command=lambda: self.change_font_size(-2))
         self.menu.add_separator()
 
-        # Tải ảnh
+        # Tùy chọn khác
         self.menu.add_command(label="📁 Tải file ảnh từ máy...", command=self.choose_image_file)
         self.menu.add_command(label="📌 Bật/Tắt Ghim trên cùng", command=self.toggle_pin)
         self.menu.add_command(
-            label="✨ Ẩn/Hiện thanh công cụ trên (Zen Mode)", command=self.toggle_zen_mode
+            label="✨ Ẩn/Hiện thanh công cụ (Zen Mode)", command=self.toggle_zen_mode
         )
         self.menu.add_separator()
 

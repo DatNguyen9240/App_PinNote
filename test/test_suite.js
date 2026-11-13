@@ -43,4 +43,11 @@ assert(fs.existsSync(path.join(__dirname, '..', 'desktop_app/app.py')), "Ứng d
 assert(fs.existsSync(path.join(__dirname, '..', 'desktop_app/standalone_window.html')), "Cửa sổ Web Standalone đã sẵn sàng");
 assert(fs.existsSync(path.join(__dirname, '..', 'Chay_App_IELTS_Corner.bat')), "File chạy 1-click Desktop App .bat đã sẵn sàng");
 
+const appPy = fs.readFileSync(path.join(__dirname, '..', 'desktop_app/app.py'), 'utf8');
+const standaloneHtml = fs.readFileSync(path.join(__dirname, '..', 'desktop_app/standalone_window.html'), 'utf8');
+
+assert(appPy.includes("highlight_selection") && appPy.includes("hl_yellow"), "Desktop App hỗ trợ Highlight từ vựng và lưu trữ highlight");
+assert(standaloneHtml.includes("applyHighlight") && standaloneHtml.includes("hiliteColor"), "Web Standalone hỗ trợ Highlight nhiều màu và lưu trữ");
+assert(contentJs.includes("applyHighlight") && contentJs.includes("btn-hl"), "Chrome Extension hỗ trợ phím tắt và nút Highlight");
+
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);
