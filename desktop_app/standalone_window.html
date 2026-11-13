@@ -28,7 +28,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 2px 8px;
+      padding: 2px 6px;
       background: #f8fafc;
       border-bottom: 1px solid #f1f5f9;
       height: 28px;
@@ -52,7 +52,7 @@
     .pill-btn {
       background: none;
       border: none;
-      padding: 2px 7px;
+      padding: 2px 6px;
       font-size: 11px;
       font-weight: 600;
       color: #64748b;
@@ -67,6 +67,62 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
+    /* Thanh quản lý nhiều Note [ 1 ] [ 2 ] [ + ] */
+    .notes-pill-bar {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      overflow-x: auto;
+      max-width: 50%;
+      padding: 0 4px;
+    }
+
+    .notes-pill-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .note-pill {
+      background: #f1f5f9;
+      color: #64748b;
+      border: 1px solid transparent;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .note-pill:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .note-pill.active {
+      background: #ffffff;
+      color: #4f46e5;
+      border-color: #cbd5e1;
+      font-weight: 700;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .btn-add-note {
+      background: none;
+      border: none;
+      color: #4f46e5;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 0 4px;
+      border-radius: 3px;
+      line-height: 1;
+    }
+
+    .btn-add-note:hover {
+      background: #e0e7ff;
+    }
+
     /* Nhóm nút nhỏ bên phải */
     .tool-actions {
       display: flex;
@@ -79,7 +135,7 @@
       border: none;
       color: #64748b;
       cursor: pointer;
-      padding: 2px 5px;
+      padding: 2px 4px;
       border-radius: 4px;
       font-size: 11px;
       line-height: 1;
@@ -119,7 +175,7 @@
       background: #94a3b8;
     }
 
-    /* Mục Văn Bản: Hỗ trợ Highlight bằng contenteditable */
+    /* Mục Văn Bản */
     .view-text {
       flex: 1;
       display: flex;
@@ -145,7 +201,7 @@
       -webkit-spellcheck: none;
     }
 
-    /* Mục Hình Ảnh: Tràn viền */
+    /* Mục Hình Ảnh */
     .view-image {
       flex: 1;
       display: none;
@@ -222,7 +278,7 @@
       padding: 4px 0;
       z-index: 9999;
       font-size: 12px;
-      min-width: 170px;
+      min-width: 180px;
       user-select: none;
     }
 
@@ -254,14 +310,18 @@
 <body>
   <!-- Thanh công cụ tối giản (chỉ cao 28px) -->
   <div class="top-toolbar" id="top-toolbar">
+    <!-- Chọn chế độ xem -->
     <div class="pill-tabs">
-      <button class="pill-btn active" id="tab-text" title="Chỉ xem văn bản">📝 Chữ</button>
-      <button class="pill-btn" id="tab-image" title="Chỉ xem hình ảnh">🖼️ Hình</button>
-      <button class="pill-btn" id="tab-split" title="Xem song song cả hai">🌓 Cả hai</button>
+      <button class="pill-btn active" id="tab-text" title="Chỉ xem văn bản">📝</button>
+      <button class="pill-btn" id="tab-image" title="Chỉ xem hình ảnh">🖼️</button>
+      <button class="pill-btn" id="tab-split" title="Xem song song cả hai">🌓</button>
     </div>
 
+    <!-- Thanh quản lý nhiều Note [ 1 ] [ 2 ] [ + ] -->
+    <div class="notes-pill-bar" id="notes-pill-bar"></div>
+
+    <!-- Công cụ bên phải -->
     <div class="tool-actions">
-      <!-- Nút Highlight nhanh -->
       <button class="icon-btn" id="btn-hl" title="Tô màu Highlight (Ctrl+H)">🖍️</button>
       <button class="icon-btn" id="btn-tts" title="Nghe phát âm (Ctrl+D)">🔊</button>
       <button class="icon-btn" id="btn-font-plus" title="Tăng cỡ chữ">A+</button>
@@ -302,32 +362,50 @@
 
   <!-- Menu chuột phải -->
   <div class="context-menu" id="context-menu">
+    <div class="menu-item" id="ctx-new-note">➕ Tạo Note mới (Ctrl+N / Ctrl+T)</div>
+    <div class="menu-item" id="ctx-rename-note">✏️ Đổi tên Note hiện tại</div>
+    <div class="menu-item" id="ctx-next-note">➡️ Chuyển sang Note tiếp (Ctrl+Tab)</div>
+    <div class="menu-item danger-item" id="ctx-delete-note">🗑️ Xóa Note hiện tại (Ctrl+W)</div>
+    <div class="menu-divider"></div>
     <div class="menu-item" id="ctx-hl-yellow">🟡 Highlight Vàng (Ctrl+H)</div>
     <div class="menu-item" id="ctx-hl-green">🟢 Highlight Xanh lá</div>
     <div class="menu-item" id="ctx-hl-pink">🌸 Highlight Hồng</div>
     <div class="menu-item" id="ctx-hl-blue">🔵 Highlight Xanh lam</div>
     <div class="menu-item" id="ctx-hl-remove">⚪ Bỏ Highlight</div>
     <div class="menu-divider"></div>
-    <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản</div>
-    <div class="menu-divider"></div>
-    <div class="menu-item" id="ctx-text">📝 Chỉ xem Chữ</div>
-    <div class="menu-item" id="ctx-image">🖼️ Chỉ xem Hình</div>
-    <div class="menu-item" id="ctx-split">🌓 Xem Cả hai</div>
+    <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản (Ctrl+D)</div>
     <div class="menu-divider"></div>
     <div class="menu-item" id="ctx-font-plus">➕ Phóng to chữ (A+)</div>
     <div class="menu-item" id="ctx-font-minus">➖ Thu nhỏ chữ (A-)</div>
-    <div class="menu-item" id="ctx-zen">✨ Ẩn/Hiện thanh trên</div>
+    <div class="menu-item" id="ctx-zen">✨ Ẩn/Hiện thanh trên (Zen Mode)</div>
     <div class="menu-divider"></div>
-    <div class="menu-item danger-item" id="ctx-clear-text">🗑️ Xóa hết chữ</div>
-    <div class="menu-item danger-item" id="ctx-clear-image">🗑️ Xóa hình ảnh</div>
+    <div class="menu-item danger-item" id="ctx-clear-text">🗑️ Xóa hết chữ Note này</div>
+    <div class="menu-item danger-item" id="ctx-clear-image">🗑️ Xóa hình ảnh Note này</div>
   </div>
 
   <script>
     (function() {
-      let activeTab = localStorage.getItem("ielts_desk_tab") || "text";
-      let savedHtml = localStorage.getItem("ielts_desk_text_html") || "";
-      let defaultText = "Chào bạn! Ứng dụng đã hỗ trợ tính năng Highlight từ vựng:\n\n• Bôi đen chữ rồi ấn Ctrl + H để tô màu vàng tức thì.\n• Hoặc chọn màu trên thanh nổi: Vàng 🟡, Xanh 🟢, Hồng 🌸, Xanh lam 🔵.\n• Mọi đoạn highlight sẽ được lưu tự động, mở lại không bị mất.\n• Bấm [🌓 Cả hai] để vừa nhìn đề bài vừa gõ bài làm.";
-      let savedImage = localStorage.getItem("ielts_desk_image") || "";
+      // Quản lý nhiều Note
+      let notes = [];
+      try {
+        notes = JSON.parse(localStorage.getItem("ielts_desk_notes") || "null");
+      } catch (e) {
+        notes = null;
+      }
+
+      if (!notes || !Array.isArray(notes) || notes.length === 0) {
+        let savedHtml = localStorage.getItem("ielts_desk_text_html") || "";
+        let defaultText = "Chào bạn! Ứng dụng đã hỗ trợ TẠO NHIỀU NOTE CÙNG LÚC:\n\n• Bấm nút [+] trên thanh tiêu đề (hoặc ấn Ctrl + N / Ctrl + T) để thêm Note mới.\n• Nhấp đúp chuột vào tên Note để đổi tên (VD: Task 1, Task 2, Vocab...).\n• Ấn Ctrl + Tab để chuyển nhanh giữa các Note.\n• Mỗi Note lưu riêng biệt: nội dung, ảnh đính kèm và các đoạn highlight.\n• Bôi đen chữ rồi ấn Ctrl + H để highlight, ấn Ctrl + Z để hủy highlight ngay lập tức.";
+        notes = [{
+          id: "1",
+          title: "Note 1",
+          html: savedHtml || defaultText.replace(/\n/g, "<br>"),
+          image: localStorage.getItem("ielts_desk_image") || "",
+          tab: localStorage.getItem("ielts_desk_tab") || "text"
+        }];
+      }
+
+      let activeNoteId = localStorage.getItem("ielts_desk_active_note") || notes[0].id;
       let fontSize = parseInt(localStorage.getItem("ielts_desk_font") || "14", 10);
       let isZen = localStorage.getItem("ielts_desk_zen") === "true";
 
@@ -335,6 +413,7 @@
       const tabText = document.getElementById("tab-text");
       const tabImage = document.getElementById("tab-image");
       const tabSplit = document.getElementById("tab-split");
+      const notesPillBar = document.getElementById("notes-pill-bar");
       const viewText = document.getElementById("view-text");
       const viewImage = document.getElementById("view-image");
       const textEditor = document.getElementById("text-editor");
@@ -343,21 +422,148 @@
       const floatingHlBar = document.getElementById("floating-hl-bar");
       const contextMenu = document.getElementById("context-menu");
 
-      // Khởi tạo text & font
-      textEditor.innerHTML = savedHtml || defaultText.replace(/\n/g, "<br>");
-      textEditor.style.fontSize = fontSize + "px";
+      let currentTab = "text";
+      let currentImage = "";
+      let hlHistory = [];
+      let hlRedo = [];
 
+      textEditor.style.fontSize = fontSize + "px";
       if (isZen) topToolbar.classList.add("hidden");
 
-      if (savedImage) {
-        imagePreview.src = savedImage;
-        imagePreview.style.display = "block";
-        emptyBox.style.display = "none";
+      function getCurrentNote() {
+        for (let n of notes) {
+          if (String(n.id) === String(activeNoteId)) return n;
+        }
+        if (notes.length > 0) {
+          activeNoteId = notes[0].id;
+          return notes[0];
+        }
+        let fresh = { id: "1", title: "Note 1", html: "", image: "", tab: "text" };
+        notes.push(fresh);
+        activeNoteId = "1";
+        return fresh;
       }
 
-      function switchTab(tab) {
-        activeTab = tab;
-        localStorage.setItem("ielts_desk_tab", tab);
+      function snapshotCurrentNote() {
+        let n = getCurrentNote();
+        n.html = textEditor.innerHTML;
+        n.image = currentImage;
+        n.tab = currentTab;
+      }
+
+      function saveAllNotes() {
+        snapshotCurrentNote();
+        localStorage.setItem("ielts_desk_notes", JSON.stringify(notes));
+        localStorage.setItem("ielts_desk_active_note", activeNoteId);
+      }
+
+      function loadNoteUI() {
+        let n = getCurrentNote();
+        textEditor.innerHTML = n.html || "";
+        currentImage = n.image || "";
+        currentTab = n.tab || "text";
+
+        if (currentImage) {
+          imagePreview.src = currentImage;
+          imagePreview.style.display = "block";
+          emptyBox.style.display = "none";
+        } else {
+          imagePreview.src = "";
+          imagePreview.style.display = "none";
+          emptyBox.style.display = "flex";
+        }
+
+        switchTab(currentTab, false);
+        renderNoteTabs();
+        hlHistory = [];
+        hlRedo = [];
+      }
+
+      function switchNote(nid) {
+        if (String(nid) === String(activeNoteId)) return;
+        saveAllNotes();
+        activeNoteId = String(nid);
+        loadNoteUI();
+      }
+
+      function createNewNote() {
+        saveAllNotes();
+        let nid = String(Date.now());
+        let num = notes.length + 1;
+        notes.push({
+          id: nid,
+          title: "Note " + num,
+          html: "",
+          image: "",
+          tab: "text"
+        });
+        activeNoteId = nid;
+        loadNoteUI();
+        saveAllNotes();
+      }
+
+      function deleteCurrentNote() {
+        if (notes.length <= 1) {
+          textEditor.innerHTML = "";
+          currentImage = "";
+          imagePreview.src = "";
+          imagePreview.style.display = "none";
+          emptyBox.style.display = "flex";
+          saveAllNotes();
+          return;
+        }
+        let idx = notes.findIndex(n => String(n.id) === String(activeNoteId));
+        if (idx !== -1) {
+          notes.splice(idx, 1);
+          let nextIdx = Math.min(idx, notes.length - 1);
+          activeNoteId = notes[nextIdx].id;
+          loadNoteUI();
+          saveAllNotes();
+        }
+      }
+
+      function renameCurrentNote() {
+        let n = getCurrentNote();
+        let newTitle = prompt("Nhập tên mới cho Note:", n.title || "Note");
+        if (newTitle && newTitle.trim()) {
+          n.title = newTitle.trim();
+          renderNoteTabs();
+          saveAllNotes();
+        }
+      }
+
+      function cycleNextNote() {
+        if (notes.length <= 1) return;
+        let idx = notes.findIndex(n => String(n.id) === String(activeNoteId));
+        let nextIdx = (idx + 1) % notes.length;
+        switchNote(notes[nextIdx].id);
+      }
+
+      function renderNoteTabs() {
+        notesPillBar.innerHTML = "";
+        notes.forEach((n, i) => {
+          let isActive = String(n.id) === String(activeNoteId);
+          let pill = document.createElement("button");
+          pill.className = "note-pill" + (isActive ? " active" : "");
+          let title = n.title || ("Note " + (i + 1));
+          pill.textContent = title.length > 9 ? title.slice(0, 8) + "…" : title;
+          pill.title = title + " (Nhấp đúp chuột để đổi tên)";
+
+          pill.addEventListener("click", () => switchNote(n.id));
+          pill.addEventListener("dblclick", () => renameCurrentNote());
+          notesPillBar.appendChild(pill);
+        });
+
+        let btnAdd = document.createElement("button");
+        btnAdd.className = "btn-add-note";
+        btnAdd.textContent = "+";
+        btnAdd.title = "Thêm Note mới (Ctrl+N / Ctrl+T)";
+        btnAdd.addEventListener("click", createNewNote);
+        notesPillBar.appendChild(btnAdd);
+      }
+
+      function switchTab(tab, doSave = true) {
+        currentTab = tab;
         tabText.classList.toggle("active", tab === "text");
         tabImage.classList.toggle("active", tab === "image");
         tabSplit.classList.toggle("active", tab === "split");
@@ -378,32 +584,24 @@
           viewText.style.display = "flex";
           viewText.style.flex = "1";
         }
+        if (doSave) saveAllNotes();
       }
 
       tabText.addEventListener("click", () => switchTab("text"));
       tabImage.addEventListener("click", () => switchTab("image"));
       tabSplit.addEventListener("click", () => switchTab("split"));
-      switchTab(activeTab);
 
-      // Lưu chữ tự động (lưu cả HTML chứa highlight)
-      function saveContent() {
-        localStorage.setItem("ielts_desk_text_html", textEditor.innerHTML);
-        localStorage.setItem("ielts_desk_text", textEditor.innerText);
-      }
       textEditor.addEventListener("input", () => {
-        hlHistory = []; // Khi gõ chữ thì để Ctrl+Z hoàn tác chữ
-        saveContent();
+        hlHistory = [];
+        saveAllNotes();
       });
 
-      // HÀM TÔ MÀU HIGHLIGHT & LỊCH SỬ HOÀN TÁC (CTRL + Z)
-      let hlHistory = [];
-      let hlRedo = [];
-
+      // HIGHLIGHT & UNDO
       function applyHighlight(color) {
         hlHistory.push(textEditor.innerHTML);
         hlRedo = [];
         document.execCommand("hiliteColor", false, color);
-        saveContent();
+        saveAllNotes();
         floatingHlBar.style.display = "none";
       }
 
@@ -411,19 +609,18 @@
         hlHistory.push(textEditor.innerHTML);
         hlRedo = [];
         document.execCommand("removeFormat", false, null);
-        saveContent();
+        saveAllNotes();
         floatingHlBar.style.display = "none";
       }
 
-      // Xử lý phím tắt
+      // Phím tắt
       window.addEventListener("keydown", (e) => {
-        // Hoàn tác Ctrl + Z: Nếu vừa highlight thì gỡ highlight ngay lập tức
         if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
           if (hlHistory.length > 0) {
             e.preventDefault();
             hlRedo.push(textEditor.innerHTML);
             textEditor.innerHTML = hlHistory.pop();
-            saveContent();
+            saveAllNotes();
             return;
           }
         } else if ((e.ctrlKey || e.metaKey) && (((e.key === "z" || e.key === "Z") && e.shiftKey) || e.key === "y" || e.key === "Y")) {
@@ -431,12 +628,21 @@
             e.preventDefault();
             hlHistory.push(textEditor.innerHTML);
             textEditor.innerHTML = hlRedo.pop();
-            saveContent();
+            saveAllNotes();
             return;
           }
         } else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
           e.preventDefault();
           applyHighlight("#fef08a");
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "n" || e.key === "N" || e.key === "t" || e.key === "T")) {
+          e.preventDefault();
+          createNewNote();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === "w" || e.key === "W")) {
+          e.preventDefault();
+          deleteCurrentNote();
+        } else if (e.ctrlKey && e.key === "Tab") {
+          e.preventDefault();
+          cycleNextNote();
         } else if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
           e.preventDefault();
           speak();
@@ -464,7 +670,6 @@
         } catch (err) {}
       });
 
-      // Bấm vào chấm màu trên thanh nổi
       document.querySelectorAll(".hl-dot").forEach(dot => {
         dot.addEventListener("mousedown", (e) => {
           e.preventDefault();
@@ -526,12 +731,12 @@
         if (file && file.type.startsWith("image/")) {
           const reader = new FileReader();
           reader.onload = (evt) => {
-            savedImage = evt.target.result;
-            imagePreview.src = savedImage;
+            currentImage = evt.target.result;
+            imagePreview.src = currentImage;
             imagePreview.style.display = "block";
             emptyBox.style.display = "none";
-            localStorage.setItem("ielts_desk_image", savedImage);
-            if (activeTab === "text") switchTab("split");
+            saveAllNotes();
+            if (currentTab === "text") switchTab("split");
           };
           reader.readAsDataURL(file);
         }
@@ -554,12 +759,12 @@
             const blob = item.getAsFile();
             const reader = new FileReader();
             reader.onload = (evt) => {
-              savedImage = evt.target.result;
-              imagePreview.src = savedImage;
+              currentImage = evt.target.result;
+              imagePreview.src = currentImage;
               imagePreview.style.display = "block";
               emptyBox.style.display = "none";
-              localStorage.setItem("ielts_desk_image", savedImage);
-              if (activeTab === "text") switchTab("split");
+              saveAllNotes();
+              if (currentTab === "text") switchTab("split");
             };
             reader.readAsDataURL(blob);
             e.preventDefault();
@@ -571,8 +776,8 @@
       // Menu chuột phải
       window.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 180) + "px";
-        contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 300) + "px";
+        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 190) + "px";
+        contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 340) + "px";
         contextMenu.style.display = "block";
       });
 
@@ -580,7 +785,12 @@
         contextMenu.style.display = "none";
       });
 
-      // Menu Context actions
+      // Context menu events
+      document.getElementById("ctx-new-note").addEventListener("click", createNewNote);
+      document.getElementById("ctx-rename-note").addEventListener("click", renameCurrentNote);
+      document.getElementById("ctx-next-note").addEventListener("click", cycleNextNote);
+      document.getElementById("ctx-delete-note").addEventListener("click", deleteCurrentNote);
+
       document.getElementById("ctx-hl-yellow").addEventListener("click", () => applyHighlight("#fef08a"));
       document.getElementById("ctx-hl-green").addEventListener("click", () => applyHighlight("#bbf7d0"));
       document.getElementById("ctx-hl-pink").addEventListener("click", () => applyHighlight("#fbcfe8"));
@@ -588,23 +798,23 @@
       document.getElementById("ctx-hl-remove").addEventListener("click", removeHighlight);
 
       document.getElementById("ctx-tts").addEventListener("click", speak);
-      document.getElementById("ctx-text").addEventListener("click", () => switchTab("text"));
-      document.getElementById("ctx-image").addEventListener("click", () => switchTab("image"));
-      document.getElementById("ctx-split").addEventListener("click", () => switchTab("split"));
       document.getElementById("ctx-font-plus").addEventListener("click", () => adjustFont(2));
       document.getElementById("ctx-font-minus").addEventListener("click", () => adjustFont(-2));
       document.getElementById("ctx-zen").addEventListener("click", toggleZen);
       document.getElementById("ctx-clear-text").addEventListener("click", () => {
         textEditor.innerHTML = "";
-        saveContent();
+        saveAllNotes();
       });
       document.getElementById("ctx-clear-image").addEventListener("click", () => {
-        savedImage = "";
+        currentImage = "";
         imagePreview.src = "";
         imagePreview.style.display = "none";
         emptyBox.style.display = "flex";
-        localStorage.setItem("ielts_desk_image", "");
+        saveAllNotes();
       });
+
+      // Nạp note đầu tiên
+      loadNoteUI();
     })();
   </script>
 </body>

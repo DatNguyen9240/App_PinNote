@@ -47,7 +47,9 @@ const appPy = fs.readFileSync(path.join(__dirname, '..', 'desktop_app/app.py'), 
 const standaloneHtml = fs.readFileSync(path.join(__dirname, '..', 'desktop_app/standalone_window.html'), 'utf8');
 
 assert(appPy.includes("highlight_selection") && appPy.includes("hl_yellow"), "Desktop App hỗ trợ Highlight từ vựng và lưu trữ highlight");
+assert(appPy.includes("create_new_note") && appPy.includes("notes"), "Desktop App hỗ trợ tạo và chuyển đổi nhiều Note");
 assert(standaloneHtml.includes("applyHighlight") && standaloneHtml.includes("hiliteColor"), "Web Standalone hỗ trợ Highlight nhiều màu và lưu trữ");
+assert(standaloneHtml.includes("createNewNote") && standaloneHtml.includes("notes"), "Web Standalone hỗ trợ tạo và chuyển đổi nhiều Note");
 assert(contentJs.includes("applyHighlight") && contentJs.includes("btn-hl"), "Chrome Extension hỗ trợ phím tắt và nút Highlight");
 
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);
