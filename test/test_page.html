@@ -89,6 +89,7 @@
         <button class="btn white" id="btn-reset">📍 Về góc dưới - phải</button>
         <button class="btn white" id="btn-tab-text">📝 Sang mục Văn Bản</button>
         <button class="btn white" id="btn-tab-image">🖼️ Sang mục Hình Ảnh</button>
+        <button class="btn white" id="btn-tab-split">🌓 Sang mục Cả Hai</button>
       </div>
     </div>
 
@@ -216,6 +217,9 @@
       });
       document.getElementById("btn-tab-image")?.addEventListener("click", () => {
         chrome.storage.local.set({ activeTab: "image", isEnabled: true, isMinimized: false, forceShow: Date.now() });
+      });
+      document.getElementById("btn-tab-split")?.addEventListener("click", () => {
+        chrome.storage.local.set({ activeTab: "split", isEnabled: true, isMinimized: false, forceShow: Date.now() });
       });
     });
   </script>

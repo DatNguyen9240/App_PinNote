@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const toggleEnable = document.getElementById("toggle-enable");
   const btnFocusText = document.getElementById("btn-focus-paste");
   const btnFocusImage = document.getElementById("btn-focus-image");
+  const btnFocusSplit = document.getElementById("btn-focus-split");
   const btnResetPos = document.getElementById("btn-reset-pos");
   const statusNotice = document.getElementById("status-notice");
 
@@ -46,6 +47,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     showNotice("✓ Đang mở mục Hình Ảnh");
   });
+
+  // Chuyển sang mục Cả Hai
+  if (btnFocusSplit) {
+    btnFocusSplit.addEventListener("click", () => {
+      chrome.storage.local.set({
+        activeTab: "split",
+        isEnabled: true,
+        isMinimized: false,
+        forceShow: Date.now()
+      });
+      showNotice("✓ Đang mở mục Cả Văn Bản & Hình Ảnh");
+    });
+  }
 
   // Đặt lại vị trí về góc màn hình
   btnResetPos.addEventListener("click", () => {

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IELTS Corner</title>
+  <link rel="icon" href="../icons/icon48.png">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #0f172a;
+      background: #ffffff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Thanh điều khiển tối giản siêu mỏng (chỉ 28px) */
+    .top-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 8px;
+      background: #f8fafc;
+      border-bottom: 1px solid #f1f5f9;
+      height: 28px;
+      user-select: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .top-toolbar.hidden {
+      display: none;
+    }
+
+    /* Tabs dạng pill siêu nhỏ */
+    .pill-tabs {
+      display: flex;
+      gap: 2px;
+      background: #e2e8f0;
+      padding: 1px;
+      border-radius: 4px;
+    }
+
+    .pill-btn {
+      background: none;
+      border: none;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .pill-btn.active {
+      background: #ffffff;
+      color: #4f46e5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    /* Nhóm nút nhỏ bên phải */
+    .tool-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 11px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-btn:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    /* Khung nội dung chính: 100% diện tích cho văn bản & hình ảnh */
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #ffffff;
+      position: relative;
+    }
+
+    /* Thanh cuộn siêu mảnh */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Mục Văn Bản: Tràn viền hoàn toàn */
+    .view-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .text-area {
+      flex: 1;
+      width: 100%;
+      border: none;
+      outline: none;
+      padding: 12px 14px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: #0f172a;
+      resize: none;
+      font-family: inherit;
+      background: #ffffff;
+      user-select: text;
+      -webkit-spellcheck: none;
+    }
+
+    /* Mục Hình Ảnh: Tràn viền */
+    .view-image {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      overflow: auto;
+      position: relative;
+      padding: 4px;
+    }
+
+    .image-preview {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 4px;
+      display: none;
+      cursor: zoom-in;
+    }
+
+    .empty-image-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #94a3b8;
+      padding: 16px;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .empty-icon {
+      font-size: 26px;
+    }
+
+    /* Menu chuột phải tối giản */
+    .context-menu {
+      position: fixed;
+      display: none;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      border-radius: 6px;
+      padding: 4px 0;
+      z-index: 9999;
+      font-size: 12px;
+      min-width: 160px;
+      user-select: none;
+    }
+
+    .menu-item {
+      padding: 6px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #334155;
+    }
+
+    .menu-item:hover {
+      background: #f1f5f9;
+      color: #4f46e5;
+    }
+
+    .menu-divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 3px 0;
+    }
+
+    .danger-item {
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <!-- Thanh công cụ tối giản (chỉ cao 28px) -->
+  <div class="top-toolbar" id="top-toolbar">
+    <div class="pill-tabs">
+      <button class="pill-btn active" id="tab-text" title="Chỉ xem văn bản">📝 Chữ</button>
+      <button class="pill-btn" id="tab-image" title="Chỉ xem hình ảnh">🖼️ Hình</button>
+      <button class="pill-btn" id="tab-split" title="Xem song song cả hai">🌓 Cả hai</button>
+    </div>
+
+    <div class="tool-actions">
+      <button class="icon-btn" id="btn-tts" title="Nghe phát âm (Ctrl+D)">🔊</button>
+      <button class="icon-btn" id="btn-font-plus" title="Tăng cỡ chữ">A+</button>
+      <button class="icon-btn" id="btn-font-minus" title="Giảm cỡ chữ">A-</button>
+      <label class="icon-btn" style="cursor: pointer;" title="Tải ảnh">
+        📁
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
+      </label>
+      <button class="icon-btn" id="btn-zen" title="Ẩn/Hiện thanh này (Zen Mode)">✨</button>
+    </div>
+  </div>
+
+  <!-- Khung nội dung tràn viền 100% -->
+  <main class="main-viewport" id="main-viewport">
+    <!-- Hình ảnh -->
+    <div class="view-image" id="view-image">
+      <img class="image-preview" id="image-preview" src="" alt="Xem trước ảnh" title="Nhấp vào để phóng to / thu nhỏ">
+      <div class="empty-image-box" id="empty-image-box">
+        <span class="empty-icon">📷</span>
+        <p>Ấn <strong>Ctrl + V</strong> dán ảnh chụp màn hình</p>
+      </div>
+    </div>
+
+    <!-- Văn bản (Không hề có gạch đỏ chính tả) -->
+    <div class="view-text" id="view-text">
+      <textarea class="text-area" id="text-area" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây..."></textarea>
+    </div>
+  </main>
+
+  <!-- Menu chuột phải -->
+  <div class="context-menu" id="context-menu">
+    <div class="menu-item" id="ctx-tts">🔊 Nghe đọc văn bản</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" id="ctx-text">📝 Chỉ xem Chữ</div>
+    <div class="menu-item" id="ctx-image">🖼️ Chỉ xem Hình</div>
+    <div class="menu-item" id="ctx-split">🌓 Xem Cả hai</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" id="ctx-font-plus">➕ Phóng to chữ (A+)</div>
+    <div class="menu-item" id="ctx-font-minus">➖ Thu nhỏ chữ (A-)</div>
+    <div class="menu-item" id="ctx-zen">✨ Ẩn/Hiện thanh trên</div>
+    <div class="menu-divider"></div>
+    <div class="menu-item danger-item" id="ctx-clear-text">🗑️ Xóa hết chữ</div>
+    <div class="menu-item danger-item" id="ctx-clear-image">🗑️ Xóa hình ảnh</div>
+  </div>
+
+  <script>
+    (function() {
+      let activeTab = localStorage.getItem("ielts_desk_tab") || "text";
+      let savedText = localStorage.getItem("ielts_desk_text") || "Chào bạn! Giao diện đã được tối giản tối đa:\n\n• Toàn bộ màn hình dành trọn vẹn cho việc đọc chữ và xem ảnh.\n• Nhấn Ctrl + V để dán đoạn văn hoặc ảnh chụp màn hình.\n• Nhấp chuột phải vào bất cứ đâu để mở Menu (Đọc, Cỡ chữ, Chế độ...).\n• Bấm [🌓 Cả hai] để vừa nhìn đề bài vừa gõ bài làm.";
+      let savedImage = localStorage.getItem("ielts_desk_image") || "";
+      let fontSize = parseInt(localStorage.getItem("ielts_desk_font") || "14", 10);
+      let isZen = localStorage.getItem("ielts_desk_zen") === "true";
+
+      const topToolbar = document.getElementById("top-toolbar");
+      const tabText = document.getElementById("tab-text");
+      const tabImage = document.getElementById("tab-image");
+      const tabSplit = document.getElementById("tab-split");
+      const viewText = document.getElementById("view-text");
+      const viewImage = document.getElementById("view-image");
+      const textArea = document.getElementById("text-area");
+      const imagePreview = document.getElementById("image-preview");
+      const emptyBox = document.getElementById("empty-image-box");
+      const contextMenu = document.getElementById("context-menu");
+
+      // Khởi tạo
+      textArea.spellcheck = false;
+      textArea.value = savedText;
+      textArea.style.fontSize = fontSize + "px";
+
+      if (isZen) topToolbar.classList.add("hidden");
+
+      if (savedImage) {
+        imagePreview.src = savedImage;
+        imagePreview.style.display = "block";
+        emptyBox.style.display = "none";
+      }
+
+      function switchTab(tab) {
+        activeTab = tab;
+        localStorage.setItem("ielts_desk_tab", tab);
+        tabText.classList.toggle("active", tab === "text");
+        tabImage.classList.toggle("active", tab === "image");
+        tabSplit.classList.toggle("active", tab === "split");
+
+        if (tab === "text") {
+          viewText.style.display = "flex";
+          viewText.style.flex = "1";
+          viewImage.style.display = "none";
+        } else if (tab === "image") {
+          viewImage.style.display = "flex";
+          viewImage.style.flex = "1";
+          viewImage.style.maxHeight = "none";
+          viewText.style.display = "none";
+        } else if (tab === "split") {
+          viewImage.style.display = "flex";
+          viewImage.style.flex = "1";
+          viewImage.style.maxHeight = "48%";
+          viewText.style.display = "flex";
+          viewText.style.flex = "1";
+        }
+      }
+
+      tabText.addEventListener("click", () => switchTab("text"));
+      tabImage.addEventListener("click", () => switchTab("image"));
+      tabSplit.addEventListener("click", () => switchTab("split"));
+      switchTab(activeTab);
+
+      // Lưu chữ tự động
+      textArea.addEventListener("input", () => {
+        localStorage.setItem("ielts_desk_text", textArea.value);
+      });
+
+      // TTS
+      function speak() {
+        const text = textArea.value.trim();
+        if (!text || !("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        setTimeout(() => {
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = "en-US";
+          u.rate = 0.95;
+          window.speechSynthesis.speak(u);
+        }, 50);
+      }
+      document.getElementById("btn-tts").addEventListener("click", speak);
+
+      // Cỡ chữ
+      function adjustFont(delta) {
+        const n = fontSize + delta;
+        if (n >= 11 && n <= 28) {
+          fontSize = n;
+          textArea.style.fontSize = fontSize + "px";
+          localStorage.setItem("ielts_desk_font", fontSize);
+        }
+      }
+      document.getElementById("btn-font-plus").addEventListener("click", () => adjustFont(2));
+      document.getElementById("btn-font-minus").addEventListener("click", () => adjustFont(-2));
+
+      // Zen mode toggle
+      function toggleZen() {
+        isZen = !isZen;
+        localStorage.setItem("ielts_desk_zen", isZen ? "true" : "false");
+        topToolbar.classList.toggle("hidden", isZen);
+      }
+      document.getElementById("btn-zen").addEventListener("click", toggleZen);
+
+      // Rê chuột lên đỉnh để hiện thanh công cụ khi ở Zen mode
+      window.addEventListener("mousemove", (e) => {
+        if (isZen) {
+          if (e.clientY < 30) {
+            topToolbar.classList.remove("hidden");
+          } else if (e.clientY > 50) {
+            topToolbar.classList.add("hidden");
+          }
+        }
+      });
+
+      // Tải ảnh
+      document.getElementById("file-input").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            savedImage = evt.target.result;
+            imagePreview.src = savedImage;
+            imagePreview.style.display = "block";
+            emptyBox.style.display = "none";
+            localStorage.setItem("ielts_desk_image", savedImage);
+            if (activeTab === "text") switchTab("split");
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Zoom ảnh
+      let isZoomed = false;
+      imagePreview.addEventListener("click", () => {
+        isZoomed = !isZoomed;
+        imagePreview.style.objectFit = isZoomed ? "cover" : "contain";
+        imagePreview.style.cursor = isZoomed ? "zoom-out" : "zoom-in";
+      });
+
+      // Dán Ctrl + V toàn cửa sổ
+      window.addEventListener("paste", (e) => {
+        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+        if (!items) return;
+        for (let item of items) {
+          if (item.type.indexOf("image") !== -1) {
+            const blob = item.getAsFile();
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              savedImage = evt.target.result;
+              imagePreview.src = savedImage;
+              imagePreview.style.display = "block";
+              emptyBox.style.display = "none";
+              localStorage.setItem("ielts_desk_image", savedImage);
+              if (activeTab === "text") switchTab("split");
+            };
+            reader.readAsDataURL(blob);
+            e.preventDefault();
+            return;
+          }
+        }
+      });
+
+      // Menu chuột phải
+      window.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        contextMenu.style.left = Math.min(e.clientX, window.innerWidth - 170) + "px";
+        contextMenu.style.top = Math.min(e.clientY, window.innerHeight - 250) + "px";
+        contextMenu.style.display = "block";
+      });
+
+      window.addEventListener("click", () => {
+        contextMenu.style.display = "none";
+      });
+
+      document.getElementById("ctx-tts").addEventListener("click", speak);
+      document.getElementById("ctx-text").addEventListener("click", () => switchTab("text"));
+      document.getElementById("ctx-image").addEventListener("click", () => switchTab("image"));
+      document.getElementById("ctx-split").addEventListener("click", () => switchTab("split"));
+      document.getElementById("ctx-font-plus").addEventListener("click", () => adjustFont(2));
+      document.getElementById("ctx-font-minus").addEventListener("click", () => adjustFont(-2));
+      document.getElementById("ctx-zen").addEventListener("click", toggleZen);
+      document.getElementById("ctx-clear-text").addEventListener("click", () => {
+        textArea.value = "";
+        localStorage.setItem("ielts_desk_text", "");
+      });
+      document.getElementById("ctx-clear-image").addEventListener("click", () => {
+        savedImage = "";
+        imagePreview.src = "";
+        imagePreview.style.display = "none";
+        emptyBox.style.display = "flex";
+        localStorage.setItem("ielts_desk_image", "");
+      });
+    })();
+  </script>
+</body>
+</html>

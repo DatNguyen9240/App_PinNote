@@ -1,13 +1,14 @@
 /**
  * IELTS Corner - Tiện ích xem Văn Bản & Hình Ảnh tối giản ở góc màn hình
- * Hỗ trợ kéo di chuyển tự do, phóng to thu nhỏ góc, dán văn bản và dán ảnh riêng biệt.
+ * Hỗ trợ kéo di chuyển tự do, phóng to thu nhỏ góc, xem riêng biệt hoặc song song cả hai.
+ * Loại bỏ hoàn toàn gạch đỏ spellcheck, tối ưu tối đa không gian đọc.
  */
 
 (function () {
   if (document.getElementById("ielts-corner-root")) return;
 
   // Trạng thái đơn giản
-  let activeTab = "text"; // 'text' hoặc 'image'
+  let activeTab = "text"; // 'text', 'image' hoặc 'split'
   let savedText = "";
   let savedImage = "";
   let fontSize = 14;
@@ -24,7 +25,7 @@
     {
       isEnabled: true,
       activeTab: "text",
-      savedText: "Chào bạn! Đây là khung xem văn bản.\n\n• Nhấn Ctrl + V để dán đoạn văn tiếng Anh vào đây.\n• Bấm 🔊 để nghe phát âm.\n• Chuyển sang tab [🖼️ Hình ảnh] để xem ảnh chụp màn hình.\n• Kéo góc dưới phải để phóng to / thu nhỏ.",
+      savedText: "Chào bạn! Đây là khung xem văn bản.\n\n• Nhấn Ctrl + V để dán đoạn văn tiếng Anh vào đây.\n• Bấm 🔊 để nghe phát âm.\n• Chuyển sang tab [🖼️ Hình ảnh] để xem ảnh chụp màn hình.\n• Chọn tab [🌓 Cả hai] để vừa nhìn đề bài vừa gõ bài.\n• Kéo góc dưới phải để phóng to / thu nhỏ.",
       savedImage: "",
       fontSize: 14,
       cardWidth: 380,
@@ -119,7 +120,7 @@
       if (textArea) textArea.style.fontSize = `${fontSize}px`;
     }
 
-    // ĐỒNG BỘ TAB ĐANG CHỌN (VĂN BẢN HOẶC HÌNH ẢNH)
+    // ĐỒNG BỘ TAB ĐANG CHỌN (VĂN BẢN, HÌNH ẢNH, HOẶC CẢ HAI)
     if (changes.activeTab && shadow) {
       switchTab(shadow, changes.activeTab.newValue);
     }
@@ -179,7 +180,7 @@
           }
         }
 
-        // Nội dung văn bản - Luôn cập nhật tức thì kể cả khi chưa bỏ focus
+        // Nội dung văn bản
         if (data.savedText !== null && data.savedText !== undefined) {
           savedText = data.savedText;
           const textArea = shadow.getElementById("text-area");
@@ -281,15 +282,39 @@
         flex-direction: column;
         overflow: hidden;
         position: relative;
-        min-width: 280px;
-        min-height: 200px;
+        min-width: 260px;
+        min-height: 180px;
+      }
+
+      /* Thanh cuộn siêu mảnh tối ưu diện tích hiển thị */
+      .text-area::-webkit-scrollbar,
+      .view-image::-webkit-scrollbar,
+      .card-body::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      .text-area::-webkit-scrollbar-track,
+      .view-image::-webkit-scrollbar-track,
+      .card-body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .text-area::-webkit-scrollbar-thumb,
+      .view-image::-webkit-scrollbar-thumb,
+      .card-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+      .text-area::-webkit-scrollbar-thumb:hover,
+      .view-image::-webkit-scrollbar-thumb:hover,
+      .card-body::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
       }
 
       /* Thanh kéo di chuyển trên cùng */
       .drag-header {
         background: #f8fafc;
         border-bottom: 1px solid #e2e8f0;
-        padding: 6px 10px;
+        padding: 5px 8px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -301,7 +326,7 @@
         cursor: grabbing;
       }
 
-      /* 2 Tab chuyển đổi Text và Hình */
+      /* Tab chuyển đổi Text, Hình, và Cả hai */
       .tabs-group {
         display: flex;
         background: #e2e8f0;
@@ -313,13 +338,14 @@
       .tab-btn {
         background: none;
         border: none;
-        padding: 4px 10px;
-        font-size: 12px;
+        padding: 3px 8px;
+        font-size: 11.5px;
         font-weight: 600;
         color: #64748b;
         border-radius: 5px;
         cursor: pointer;
         transition: all 0.15s;
+        white-space: nowrap;
       }
 
       .tab-btn.active {
@@ -331,13 +357,14 @@
       .header-right {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
       }
 
       .drag-hint {
         font-size: 11px;
         color: #94a3b8;
         font-weight: 500;
+        margin-left: 2px;
       }
 
       .btn-icon {
@@ -347,8 +374,11 @@
         cursor: pointer;
         padding: 3px 6px;
         border-radius: 4px;
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .btn-icon:hover {
@@ -361,7 +391,8 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        padding: 8px;
+        padding: 6px;
+        gap: 6px;
         overflow: hidden;
         background: #ffffff;
         position: relative;
@@ -372,7 +403,8 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        min-height: 70px;
+        overflow: hidden;
       }
 
       .text-area {
@@ -380,14 +412,15 @@
         width: 100%;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        padding: 10px;
+        padding: 8px 10px;
         font-size: 14px;
-        line-height: 1.6;
+        line-height: 1.48;
         color: #0f172a;
         resize: none;
         outline: none;
         font-family: inherit;
         background: #ffffff;
+        -webkit-spellcheck: none;
       }
 
       .text-area:focus {
@@ -401,12 +434,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        border: 2px dashed #cbd5e1;
+        border: 1px dashed #cbd5e1;
         border-radius: 8px;
-        padding: 6px;
+        padding: 4px;
         background: #f8fafc;
-        overflow: hidden;
+        overflow: auto;
         position: relative;
+        min-height: 70px;
       }
 
       .image-preview {
@@ -415,6 +449,8 @@
         object-fit: contain;
         border-radius: 6px;
         display: none;
+        cursor: zoom-in;
+        transition: transform 0.15s ease;
       }
 
       .empty-image-box {
@@ -424,12 +460,13 @@
         justify-content: center;
         text-align: center;
         color: #64748b;
-        padding: 20px;
-        gap: 8px;
+        padding: 10px;
+        gap: 4px;
+        font-size: 12px;
       }
 
       .empty-icon {
-        font-size: 32px;
+        font-size: 26px;
       }
 
       /* Thanh công cụ dưới đáy */
@@ -437,16 +474,21 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 6px 10px;
+        padding: 5px 8px;
         background: #f8fafc;
         border-top: 1px solid #e2e8f0;
         font-size: 11.5px;
+        transition: all 0.2s ease;
+      }
+
+      .card-footer.collapsed {
+        display: none !important;
       }
 
       .footer-btn {
         background: #ffffff;
         border: 1px solid #cbd5e1;
-        padding: 3px 8px;
+        padding: 3px 7px;
         border-radius: 5px;
         font-size: 11.5px;
         font-weight: 600;
@@ -454,7 +496,8 @@
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
+        white-space: nowrap;
       }
 
       .footer-btn:hover {
@@ -471,13 +514,13 @@
         position: absolute;
         bottom: 0px;
         right: 0px;
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
         cursor: nwse-resize;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: bold;
         color: #6366f1;
         background: #e0e7ff;
@@ -493,8 +536,8 @@
       /* Bong bóng thu nhỏ có thể kéo di chuyển */
       .bubble-box {
         display: none;
-        width: 46px;
-        height: 46px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
         background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
         color: white;
@@ -503,14 +546,14 @@
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 17px;
+        font-size: 16px;
         border: 2px solid white;
         user-select: none;
         transition: transform 0.15s, box-shadow 0.15s;
       }
 
       .bubble-box:hover {
-        transform: scale(1.1);
+        transform: scale(1.08);
         box-shadow: 0 12px 24px rgba(79, 70, 229, 0.55);
       }
 
@@ -521,7 +564,7 @@
     `;
     shadow.appendChild(style);
 
-    // Cấu trúc HTML tối giản
+    // Cấu trúc HTML
     const wrapper = document.createElement("div");
     wrapper.innerHTML = `
       <div id="ielts-card" class="card-box" style="width: ${cardWidth}px; height: ${cardHeight}px; display: ${isMinimized ? "none" : "flex"}">
@@ -529,37 +572,39 @@
         <!-- Header có thể kéo di chuyển -->
         <div class="drag-header" id="drag-header" title="Nhấp giữ thanh này để kéo di chuyển thẻ">
           <div class="tabs-group">
-            <button class="tab-btn ${activeTab === "text" ? "active" : ""}" id="tab-text">📝 Văn bản</button>
-            <button class="tab-btn ${activeTab === "image" ? "active" : ""}" id="tab-image">🖼️ Hình ảnh</button>
+            <button class="tab-btn ${activeTab === "text" ? "active" : ""}" id="tab-text" title="Chỉ xem văn bản">📝 Văn bản</button>
+            <button class="tab-btn ${activeTab === "image" ? "active" : ""}" id="tab-image" title="Chỉ xem hình ảnh">🖼️ Hình ảnh</button>
+            <button class="tab-btn ${activeTab === "split" ? "active" : ""}" id="tab-split" title="Xem cùng lúc cả hình ảnh và văn bản">🌓 Cả hai</button>
           </div>
           <div class="header-right">
+            <button class="btn-icon" id="btn-toggle-footer" title="Ẩn/Hiện thanh nút bên dưới để tối đa diện tích chữ & hình">🔽</button>
             <span class="drag-hint">⠿ Kéo</span>
             <button class="btn-icon" id="btn-minimize" title="Thu nhỏ">_</button>
           </div>
         </div>
 
-        <!-- Body -->
-        <div class="card-body">
+        <!-- Body: Chứa Hình ảnh và Văn bản -->
+        <div class="card-body" id="card-body">
           
-          <!-- MỤC 1: VĂN BẢN -->
-          <div class="view-text" id="view-text" style="display: ${activeTab === "text" ? "flex" : "none"}">
-            <textarea class="text-area" id="text-area" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây...">${savedText}</textarea>
-          </div>
-
-          <!-- MỤC 2: HÌNH ẢNH -->
-          <div class="view-image" id="view-image" style="display: ${activeTab === "image" ? "flex" : "none"}">
-            <img class="image-preview" id="image-preview" src="${savedImage}" style="display: ${savedImage ? "block" : "none"}">
+          <!-- MỤC 2: HÌNH ẢNH (đặt lên trên khi chia đôi để tiện xem đề bài / chart bên trên, gõ chữ bên dưới) -->
+          <div class="view-image" id="view-image" style="display: ${activeTab === "image" || activeTab === "split" ? "flex" : "none"}; ${activeTab === "split" ? "max-height: 48%;" : ""}">
+            <img class="image-preview" id="image-preview" src="${savedImage}" style="display: ${savedImage ? "block" : "none"}" title="Nhấp để phóng to / thu nhỏ ảnh">
             
             <div class="empty-image-box" id="empty-image-box" style="display: ${savedImage ? "none" : "flex"}">
               <span class="empty-icon">📷</span>
-              <p>Chụp màn hình rồi ấn <strong>Ctrl + V</strong> để dán ảnh vào đây</p>
+              <p>Ấn <strong>Ctrl + V</strong> dán ảnh chụp màn hình</p>
             </div>
+          </div>
+
+          <!-- MỤC 1: VĂN BẢN (loại bỏ hoàn toàn gạch đỏ chính tả bằng spellcheck="false") -->
+          <div class="view-text" id="view-text" style="display: ${activeTab === "text" || activeTab === "split" ? "flex" : "none"}">
+            <textarea class="text-area" id="text-area" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false" placeholder="Nhấn Ctrl + V hoặc gõ văn bản tiếng Anh vào đây...">${savedText}</textarea>
           </div>
 
         </div>
 
-        <!-- Footer -->
-        <div class="card-footer">
+        <!-- Footer thanh công cụ -->
+        <div class="card-footer" id="card-footer">
           <!-- Footer nút cho Text -->
           <div id="footer-text" style="display: ${activeTab === "text" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
             <div style="display: flex; gap: 4px;">
@@ -577,6 +622,23 @@
               <input type="file" id="file-input" accept="image/*" style="display:none;">
             </label>
             <button class="footer-btn btn-danger" id="btn-clear-image">Xóa ảnh</button>
+          </div>
+
+          <!-- Footer nút cho Split (Cả hai) -->
+          <div id="footer-split" style="display: ${activeTab === "split" ? "flex" : "none"}; width: 100%; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <button class="footer-btn" id="btn-tts-split">🔊 Đọc</button>
+              <button class="footer-btn" id="btn-font-minus-split" title="Thu nhỏ chữ">A-</button>
+              <button class="footer-btn" id="btn-font-plus-split" title="Phóng to chữ">A+</button>
+              <label class="footer-btn" style="cursor: pointer;" title="Tải ảnh">
+                📁 Ảnh
+                <input type="file" id="file-input-split" accept="image/*" style="display:none;">
+              </label>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button class="footer-btn btn-danger" id="btn-clear-text-split" title="Xóa chữ">Xóa chữ</button>
+              <button class="footer-btn btn-danger" id="btn-clear-image-split" title="Xóa ảnh">Xóa ảnh</button>
+            </div>
           </div>
         </div>
 
@@ -602,6 +664,7 @@
     setupTabs(shadow);
     setupTextControls(shadow);
     setupImageControls(shadow);
+    setupFooterToggle(shadow);
     setupDrag(host, shadow.getElementById("drag-header"), cardEl);
     setupResize(host, cardEl, shadow.getElementById("resize-grip"));
     setupBubbleDragAndClick(host, cardEl, bubbleEl, shadow.getElementById("btn-minimize"));
@@ -615,7 +678,6 @@
     const currentH = (card && card.offsetHeight) || cardHeight || 440;
 
     if (widgetPosition.left !== undefined) {
-      // Đảm bảo không bị bay ra ngoài màn hình bên phải hoặc bên trái
       const maxLeft = Math.max(10, window.innerWidth - Math.min(currentW, 100));
       const safeLeft = Math.min(Math.max(10, widgetPosition.left), maxLeft);
       host.style.setProperty("left", `${safeLeft}px`, "important");
@@ -627,7 +689,6 @@
     }
 
     if (widgetPosition.top !== undefined) {
-      // Đảm bảo không bị bay ra ngoài mép dưới hoặc mép trên
       const maxTop = Math.max(10, window.innerHeight - Math.min(currentH, 100));
       const safeTop = Math.min(Math.max(10, widgetPosition.top), maxTop);
       host.style.setProperty("top", `${safeTop}px`, "important");
@@ -645,30 +706,46 @@
     if (root) applyPosition(root);
   });
 
-  // --- CHUYỂN TAB (VĂN BẢN VÀ HÌNH ẢNH) ---
+  // --- CHUYỂN TAB (VĂN BẢN, HÌNH ẢNH, HOẶC CẢ HAI) ---
   function switchTab(shadow, tab) {
     activeTab = tab;
     const tabText = shadow.getElementById("tab-text");
     const tabImage = shadow.getElementById("tab-image");
+    const tabSplit = shadow.getElementById("tab-split");
     const viewText = shadow.getElementById("view-text");
     const viewImage = shadow.getElementById("view-image");
     const footerText = shadow.getElementById("footer-text");
     const footerImage = shadow.getElementById("footer-image");
+    const footerSplit = shadow.getElementById("footer-split");
+
+    if (tabText) tabText.classList.toggle("active", tab === "text");
+    if (tabImage) tabImage.classList.toggle("active", tab === "image");
+    if (tabSplit) tabSplit.classList.toggle("active", tab === "split");
 
     if (tab === "text") {
-      tabText.classList.add("active");
-      tabImage.classList.remove("active");
       viewText.style.display = "flex";
+      viewText.style.flex = "1";
       viewImage.style.display = "none";
-      footerText.style.display = "flex";
-      footerImage.style.display = "none";
-    } else {
-      tabImage.classList.add("active");
-      tabText.classList.remove("active");
+      if (footerText) footerText.style.display = "flex";
+      if (footerImage) footerImage.style.display = "none";
+      if (footerSplit) footerSplit.style.display = "none";
+    } else if (tab === "image") {
       viewImage.style.display = "flex";
+      viewImage.style.flex = "1";
+      viewImage.style.maxHeight = "none";
       viewText.style.display = "none";
-      footerImage.style.display = "flex";
-      footerText.style.display = "none";
+      if (footerText) footerText.style.display = "none";
+      if (footerImage) footerImage.style.display = "flex";
+      if (footerSplit) footerSplit.style.display = "none";
+    } else if (tab === "split") {
+      viewImage.style.display = "flex";
+      viewImage.style.flex = "1";
+      viewImage.style.maxHeight = "48%";
+      viewText.style.display = "flex";
+      viewText.style.flex = "1";
+      if (footerText) footerText.style.display = "none";
+      if (footerImage) footerImage.style.display = "none";
+      if (footerSplit) footerSplit.style.display = "flex";
     }
     chrome.storage.local.set({ activeTab });
   }
@@ -676,17 +753,55 @@
   function setupTabs(shadow) {
     shadow.getElementById("tab-text").addEventListener("click", () => switchTab(shadow, "text"));
     shadow.getElementById("tab-image").addEventListener("click", () => switchTab(shadow, "image"));
+    const tabSplit = shadow.getElementById("tab-split");
+    if (tabSplit) {
+      tabSplit.addEventListener("click", () => switchTab(shadow, "split"));
+    }
+  }
+
+  // --- NÚT ẨN / HIỆN FOOTER ĐỂ TỐI ĐA KHÔNG GIAN ĐỌC ---
+  function setupFooterToggle(shadow) {
+    const btnToggle = shadow.getElementById("btn-toggle-footer");
+    const footer = shadow.getElementById("card-footer");
+    let isHidden = false;
+
+    if (btnToggle && footer) {
+      btnToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        isHidden = !isHidden;
+        if (isHidden) {
+          footer.classList.add("collapsed");
+          btnToggle.textContent = "🔼";
+          btnToggle.title = "Hiện thanh công cụ bên dưới";
+        } else {
+          footer.classList.remove("collapsed");
+          btnToggle.textContent = "🔽";
+          btnToggle.title = "Ẩn thanh công cụ bên dưới để tối đa diện tích chữ & hình";
+        }
+      });
+    }
   }
 
   // --- MỤC VĂN BẢN (TEXT) ---
   function setupTextControls(shadow) {
     const textArea = shadow.getElementById("text-area");
     const btnTts = shadow.getElementById("btn-tts");
+    const btnTtsSplit = shadow.getElementById("btn-tts-split");
     const btnClearText = shadow.getElementById("btn-clear-text");
+    const btnClearTextSplit = shadow.getElementById("btn-clear-text-split");
     const btnFontPlus = shadow.getElementById("btn-font-plus");
+    const btnFontPlusSplit = shadow.getElementById("btn-font-plus-split");
     const btnFontMinus = shadow.getElementById("btn-font-minus");
+    const btnFontMinusSplit = shadow.getElementById("btn-font-minus-split");
 
+    // XÓA BỎ HOÀN TOÀN DẤU GẠCH ĐỎ CHÍNH TẢ
+    textArea.spellcheck = false;
+    textArea.setAttribute("spellcheck", "false");
+    textArea.setAttribute("autocomplete", "off");
+    textArea.setAttribute("autocorrect", "off");
+    textArea.setAttribute("autocapitalize", "off");
     textArea.style.fontSize = `${fontSize}px`;
+
     if (savedText) {
       textArea.value = savedText;
     }
@@ -706,7 +821,7 @@
       saveTextNow();
     }
 
-    // Tự động lưu văn bản liên tục trên mọi thao tác gõ (kể cả từng chữ cái, chưa bấm Space)
+    // Tự động lưu văn bản liên tục trên mọi thao tác gõ
     textArea.addEventListener("input", onUserTyping);
     textArea.addEventListener("compositionupdate", onUserTyping);
     textArea.addEventListener("compositionend", onUserTyping);
@@ -718,14 +833,16 @@
     });
 
     // Khi người dùng bấm xóa chữ
-    btnClearText.addEventListener("click", () => {
+    function clearTextAction() {
       textArea.value = "";
       savedText = "";
       isUserDirty = true;
       chrome.storage.local.set({ savedText: "" });
-    });
+    }
+    if (btnClearText) btnClearText.addEventListener("click", clearTextAction);
+    if (btnClearTextSplit) btnClearTextSplit.addEventListener("click", clearTextAction);
 
-    // KHI RỜI TAB HOẶC RỜI CỬA SỔ: Chắc chắn lưu nếu tab này đang có con trỏ gõ chữ
+    // KHI RỜI TAB HOẶC RỜI CỬA SỔ
     function handleLeaveTab() {
       const wasTyping = shadow && shadow.activeElement === textArea;
       if (wasTyping || isUserDirty) {
@@ -751,7 +868,7 @@
     });
 
     // Phát âm đoạn văn
-    btnTts.addEventListener("click", () => {
+    function playSpeech() {
       const text = textArea.value.trim();
       if (!text || !("speechSynthesis" in window)) return;
       window.speechSynthesis.cancel();
@@ -761,31 +878,23 @@
         u.rate = 0.95;
         window.speechSynthesis.speak(u);
       }, 50);
-    });
+    }
+    if (btnTts) btnTts.addEventListener("click", playSpeech);
+    if (btnTtsSplit) btnTtsSplit.addEventListener("click", playSpeech);
 
     // Tăng giảm cỡ chữ
-    btnFontPlus.addEventListener("click", () => {
-      if (fontSize < 24) {
-        fontSize += 2;
+    function adjustFontSize(delta) {
+      const target = fontSize + delta;
+      if (target >= 11 && target <= 26) {
+        fontSize = target;
         textArea.style.fontSize = `${fontSize}px`;
         chrome.storage.local.set({ fontSize });
       }
-    });
-
-    btnFontMinus.addEventListener("click", () => {
-      if (fontSize > 11) {
-        fontSize -= 2;
-        textArea.style.fontSize = `${fontSize}px`;
-        chrome.storage.local.set({ fontSize });
-      }
-    });
-
-    // Xóa chữ
-    btnClearText.addEventListener("click", () => {
-      textArea.value = "";
-      savedText = "";
-      chrome.storage.local.set({ savedText: "" });
-    });
+    }
+    if (btnFontPlus) btnFontPlus.addEventListener("click", () => adjustFontSize(2));
+    if (btnFontPlusSplit) btnFontPlusSplit.addEventListener("click", () => adjustFontSize(2));
+    if (btnFontMinus) btnFontMinus.addEventListener("click", () => adjustFontSize(-2));
+    if (btnFontMinusSplit) btnFontMinusSplit.addEventListener("click", () => adjustFontSize(-2));
   }
 
   // --- MỤC HÌNH ẢNH (IMAGE) ---
@@ -793,7 +902,9 @@
     const imagePreview = shadow.getElementById("image-preview");
     const emptyBox = shadow.getElementById("empty-image-box");
     const fileInput = shadow.getElementById("file-input");
+    const fileInputSplit = shadow.getElementById("file-input-split");
     const btnClearImage = shadow.getElementById("btn-clear-image");
+    const btnClearImageSplit = shadow.getElementById("btn-clear-image-split");
     const card = shadow.getElementById("ielts-card");
 
     function renderImage(dataUrl) {
@@ -804,23 +915,40 @@
       chrome.storage.local.set({ savedImage: dataUrl });
     }
 
-    // Tải ảnh qua nút bấm file
-    fileInput.addEventListener("change", (e) => {
+    function onFileChosen(e) {
       const file = e.target.files[0];
       if (file && file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (evt) => renderImage(evt.target.result);
         reader.readAsDataURL(file);
       }
-    });
+    }
+
+    if (fileInput) fileInput.addEventListener("change", onFileChosen);
+    if (fileInputSplit) fileInputSplit.addEventListener("change", onFileChosen);
 
     // Xóa ảnh
-    btnClearImage.addEventListener("click", () => {
+    function clearImageAction() {
       savedImage = "";
       imagePreview.src = "";
       imagePreview.style.display = "none";
       emptyBox.style.display = "flex";
       chrome.storage.local.set({ savedImage: "" });
+    }
+    if (btnClearImage) btnClearImage.addEventListener("click", clearImageAction);
+    if (btnClearImageSplit) btnClearImageSplit.addEventListener("click", clearImageAction);
+
+    // Nhấp vào ảnh để phóng to chi tiết / thu nhỏ vừa vặn
+    let isZoomed = false;
+    imagePreview.addEventListener("click", () => {
+      isZoomed = !isZoomed;
+      if (isZoomed) {
+        imagePreview.style.objectFit = "cover";
+        imagePreview.style.cursor = "zoom-out";
+      } else {
+        imagePreview.style.objectFit = "contain";
+        imagePreview.style.cursor = "zoom-in";
+      }
     });
 
     // Dán (Paste) thông minh: Nhấn Ctrl+V dán ảnh hoặc chữ
@@ -834,7 +962,9 @@
           const reader = new FileReader();
           reader.onload = (evt) => {
             renderImage(evt.target.result);
-            switchTab(shadow, "image"); // Tự động chuyển qua tab hình ảnh
+            if (activeTab === "text") {
+              switchTab(shadow, "split"); // Chuyển sang Cả hai để xem vừa ảnh vừa bài
+            }
           };
           reader.readAsDataURL(blob);
           e.preventDefault();
@@ -877,7 +1007,6 @@
     };
 
     dragHeader.addEventListener("mousedown", (e) => {
-      // Không kéo nếu nhấp vào nút
       if (e.target.closest("button") || e.target.closest("input")) return;
 
       isDragging = true;
@@ -914,8 +1043,8 @@
       const maxW = window.innerWidth - card.getBoundingClientRect().left - 10;
       const maxH = window.innerHeight - card.getBoundingClientRect().top - 10;
 
-      const newW = Math.max(260, Math.min(maxW, startW + (e.clientX - startX)));
-      const newH = Math.max(180, Math.min(maxH, startH + (e.clientY - startY)));
+      const newW = Math.max(240, Math.min(maxW, startW + (e.clientX - startX)));
+      const newH = Math.max(160, Math.min(maxH, startH + (e.clientY - startY)));
 
       card.style.setProperty("width", `${newW}px`, "important");
       card.style.setProperty("height", `${newH}px`, "important");
@@ -948,7 +1077,6 @@
       startW = rect.width;
       startH = rect.height;
 
-      // Neo thẻ ở góc trên-trái
       host.style.setProperty("right", "auto", "important");
       host.style.setProperty("bottom", "auto", "important");
       host.style.setProperty("left", `${rect.left}px`, "important");
@@ -970,7 +1098,6 @@
     let startTime = 0;
     let initLeft = 0, initTop = 0;
 
-    // Nút thu nhỏ trên thẻ
     btnMin.addEventListener("click", (e) => {
       e.stopPropagation();
       card.style.display = "none";
@@ -985,9 +1112,8 @@
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
 
-      // Phải kéo di chuyển hơn 8px mới bắt đầu dời vị trí
       if (Math.hypot(deltaX, deltaY) > 8) {
-        const bubbleSize = 48;
+        const bubbleSize = 46;
         const newLeft = Math.max(0, Math.min(window.innerWidth - bubbleSize, initLeft + deltaX));
         const newTop = Math.max(0, Math.min(window.innerHeight - bubbleSize, initTop + deltaY));
 
@@ -1009,11 +1135,9 @@
       const elapsed = Date.now() - startTime;
       const moveDistance = Math.hypot(e.clientX - startX, e.clientY - startY);
 
-      // Nếu nhấp chuột nhanh (< 350ms) hoặc di chuyển ít (< 10px) => ĐÂY LÀ CLICK MỞ THẺ NGAY LẬP TỨC!
       if (elapsed < 350 || moveDistance < 10) {
         openCard();
       } else {
-        // Người dùng cố ý kéo bong bóng đi xa
         const rect = bubble.getBoundingClientRect();
         const pos = { left: Math.round(rect.left), top: Math.round(rect.top) };
         widgetPosition = pos;
@@ -1026,7 +1150,6 @@
       card.style.display = "flex";
       isMinimized = false;
 
-      // Định vị an toàn không bị tràn màn hình
       const hostRect = host.getBoundingClientRect();
       const cardW = card.offsetWidth || cardWidth || 380;
       const cardH = card.offsetHeight || cardHeight || 440;

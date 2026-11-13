@@ -1,46 +1,40 @@
-# IELTS Corner - Tiện ích Dán Đoạn Văn, Dán Ảnh & Học Tiếng Anh Góc Màn Hình
+# IELTS Corner - Tiện ích & Ứng Dụng Xem Chữ, Xem Ảnh & Học IELTS
 
-**IELTS Corner** là Chrome/Edge Extension tiện lợi hiển thị ở góc màn hình, cho phép bạn:
-- **Dán văn bản tiếng Anh** (bài đọc, bài luận, đoạn văn mẫu...).
-- **Dán trực tiếp ảnh chụp màn hình** (đề thi, sơ đồ tư duy Mindmap, ngữ pháp, bảng biểu IELTS Task 1...).
-- **Di chuyển tự do** đến mọi vị trí trên màn hình.
-- **Phóng to / thu nhỏ linh hoạt** (kéo góc thẻ hoặc zoom chữ/ảnh).
-- **Học từ vựng IELTS** theo chủ đề với tính năng tự chuyển từ và phát âm audio giọng chuẩn.
+Phiên bản nâng cấp mới giải quyết trọn vẹn 3 nhu cầu:
+1. **Tối ưu hiển thị**: Xem được nhiều chữ và hình cùng lúc với chế độ song song **[🌓 Cả hai]**, thanh cuộn mỏng 5px và nút thu gọn công cụ **[🔽]**.
+2. **Không còn dấu gạch đỏ ziczac**: Đã tắt triệt để tính năng spellcheck kiểm tra chính tả.
+3. **Ứng dụng Desktop độc lập (Always-on-top)**: Hiển thị nổi trên màn hình ở bất cứ đâu (đè lên Word, PDF, Chrome, Desktop...) mà không bị giới hạn trong trình duyệt.
 
 ---
 
-## 🎯 Các tính năng chính theo yêu cầu:
+## 🎯 3 Cách Sử Dụng IELTS Corner:
 
-### 1. Dán hình ảnh (Paste Image trực tiếp)
-- Khi đang xem đề bài hoặc tài liệu, bạn chỉ cần dùng công cụ chụp ảnh màn hình (`Windows + Shift + S` hoặc Snipping Tool), sau đó click vào thẻ và ấn **`Ctrl + V`**.
-- Ảnh sẽ lập tức xuất hiện ngay trên thẻ nổi.
-- Có thêm nút **📁 Tải ảnh lên** để chọn ảnh từ ổ cứng máy tính.
-
-### 2. Dán đoạn văn bản (Paste Text)
-- Copy bất kỳ đoạn văn tiếng Anh nào rồi ấn **`Ctrl + V`** vào khung ghi chú.
-- Bấm nút **🔊 Đọc** để nghe phát âm cả đoạn văn bản bằng giọng bản xứ chuẩn (Text-to-Speech).
-
-### 3. Di chuyển tự do (Draggable)
-- Nhấp và giữ chuột vào thanh trên cùng (Header) để kéo thẻ tới bất cứ góc nào bạn muốn. Vị trí sẽ tự động được lưu lại.
-
-### 4. Phóng to / Thu nhỏ kích thước (Resizable & Zoom)
-- **Kéo góc `⤡`** ở góc dưới cùng bên phải của thẻ để co giãn chiều rộng/chiều cao tự do theo ý thích.
-- Bấm nút **`+`** hoặc **`-`** trên thanh công cụ để tăng/giảm kích thước chữ và ảnh nhanh chóng.
-- **Thanh trượt Độ mờ (Opacity)**: Kéo thanh trượt để làm thẻ trong suốt (từ 30% đến 100%), giúp bạn vừa nhìn tài liệu vừa thao tác trên trang web bên dưới mà không bị che khuất.
+### 🌟 CÁCH 1: Ứng dụng Desktop chạy ở bất cứ đâu trên màn hình (Khuyên dùng)
+- **Vị trí file chạy**: [Chay_App_IELTS_Corner.bat](file:///d:/Dat/extention_ielts/Chay_App_IELTS_Corner.bat)
+- **Cách dùng**: Nhấp đúp chuột vào file `Chay_App_IELTS_Corner.bat` (có thể chuột phải -> Send to Desktop để tạo biểu tượng ngoài màn hình chính).
+- **Tính năng nổi bật**:
+  - **Always-on-top**: Nổi đè lên Microsoft Word, Foxit/Acrobat Reader PDF, Chrome, PowerPoint... Có nút **📌 Ghim** để bật/tắt.
+  - **Kéo thả di chuyển**: Kéo đi khắp màn hình máy tính.
+  - **Dán Ctrl + V thông minh**: Tự nhận diện ảnh chụp màn hình hay văn bản.
+  - **3 Tab linh hoạt**: `📝 Văn bản`, `🖼️ Hình ảnh`, `🌓 Cả hai` (vừa nhìn đề bài vừa gõ bài làm).
+  - **Không hề có dấu gạch đỏ**.
+  - **Thu nhỏ thành bong bóng nổi**: Bấm nút tròn `○` để thu gọn thành bong bóng nhỏ góc màn hình, bấm vào là bung to lại.
+  - **Đọc phát âm (TTS)**: Phát âm tiếng Anh chuẩn bản xứ.
 
 ---
 
-## 🚀 Hướng dẫn cài đặt lên Chrome / Edge (Chỉ mất 30 giây):
+### 🌐 CÁCH 2: Cửa Sổ Web App Độc Lập
+- **Vị trí file chạy**: [Chay_Cua_So_Web_App.bat](file:///d:/Dat/extention_ielts/Chay_Cua_So_Web_App.bat)
+- Mở IELTS Corner dưới dạng một cửa sổ ứng dụng Chrome độc lập (không thanh địa chỉ, có icon riêng trên thanh Taskbar).
 
-1. Mở trình duyệt **Google Chrome** (hoặc **Microsoft Edge**, Cốc Cốc, Brave).
-2. Truy cập vào trang quản lý tiện ích:
-   - Trên Chrome: Gõ `chrome://extensions` vào thanh địa chỉ rồi Enter.
-   - Trên Edge: Gõ `edge://extensions` vào thanh địa chỉ rồi Enter.
-3. Bật công tắc **Chế độ dành cho nhà phát triển** (**Developer mode**) ở góc trên bên phải màn hình.
-4. Bấm nút **Tải tiện ích đã giải nén** (**Load unpacked**).
-5. Chọn thư mục dự án:
-   ```
-   D:\Dat\extention_ielts
-   ```
-6. Tiện ích sẽ được kích hoạt ngay lập tức trên mọi trang web bạn mở!
+---
 
+### 🧩 CÁCH 3: Tiện ích Chrome / Edge Extension (Trên mọi trang web)
+Nếu bạn đang lướt web và muốn widget hiển thị nổi ở góc trang:
+1. Mở Chrome gõ `chrome://extensions` (bật **Developer Mode**).
+2. Bấm **Load unpacked** (Tải tiện ích đã giải nén) và chọn thư mục `d:\Dat\extention_ielts`.
+3. Widget nổi góc màn hình đã được nâng cấp:
+   - Tab **[🌓 Cả hai]** hiển thị song song cả ảnh và chữ.
+   - Nút **[🔽]** trên góc phải giúp giấu thanh công cụ bên dưới để mở rộng diện tích xem chữ và ảnh tối đa.
+   - Nhấp vào ảnh để phóng to chi tiết / thu nhỏ vừa vặn.
+   - Hoàn toàn không còn dấu gạch đỏ dưới chân chữ.

@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 console.log("==================================================");
-console.log("   KIỂM THỬ PHIÊN BẢN TỐI GIẢN (TEXT & IMAGE)");
+console.log("   KIỂM THỬ TỐI ƯU GIAO DIỆN & DESKTOP APP");
 console.log("==================================================\n");
 
 let passed = 0;
@@ -28,6 +28,9 @@ const popupHtml = fs.readFileSync(path.join(__dirname, '..', 'popup/popup.html')
 const testPageHtml = fs.readFileSync(path.join(__dirname, '..', 'test/test_page.html'), 'utf8');
 
 assert(contentJs.includes("tab-text") && contentJs.includes("tab-image"), "Tách riêng 2 mục: Văn bản (Text) và Hình ảnh (Image)");
+assert(contentJs.includes("tab-split"), "Chế độ xem đồng thời cả chữ và ảnh (Split View: Cả hai)");
+assert(contentJs.includes('spellcheck="false"'), "Đã tắt hoàn toàn dấu gạch đỏ chính tả (spellcheck=false)");
+assert(contentJs.includes("btn-toggle-footer"), "Có nút ẩn/hiện thanh công cụ dưới đáy để mở rộng không gian đọc");
 assert(contentJs.includes("setupDrag"), "Hỗ trợ kéo di chuyển tự do");
 assert(contentJs.includes("setupResize"), "Hỗ trợ kéo góc phóng to / thu nhỏ");
 assert(contentJs.includes("FileReader"), "Hỗ trợ dán hoặc chọn ảnh");
@@ -36,5 +39,8 @@ assert(!popupJs.includes("window.close()"), "Popup không tự tắt khi nhấn 
 assert(contentJs.includes("saveTextNow") && contentJs.includes("visibilitychange"), "Lưu tức thời khi chuyển tab dù chưa bỏ focus (blur)");
 assert(contentJs.includes("safeLeft") && contentJs.includes("safeTop"), "Tự động căn chỉnh vị trí an toàn tránh bị trôi ra ngoài màn hình");
 assert(testPageHtml.includes("BroadcastChannel") && testPageHtml.includes("localStorage"), "Trang test đồng bộ thời gian thực giữa nhiều tab");
+assert(fs.existsSync(path.join(__dirname, '..', 'desktop_app/app.py')), "Ứng dụng Desktop Python Always-on-top đã sẵn sàng");
+assert(fs.existsSync(path.join(__dirname, '..', 'desktop_app/standalone_window.html')), "Cửa sổ Web Standalone đã sẵn sàng");
+assert(fs.existsSync(path.join(__dirname, '..', 'Chay_App_IELTS_Corner.bat')), "File chạy 1-click Desktop App .bat đã sẵn sàng");
 
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);
