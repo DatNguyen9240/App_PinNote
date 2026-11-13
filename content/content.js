@@ -551,7 +551,8 @@
         bottom: 0;
         left: 0;
         right: 0;
-        max-height: 55%;
+        height: 160px;
+        max-height: 85%;
         background: #f8fafc;
         border-top: 1px solid #cbd5e1;
         box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
@@ -570,6 +571,8 @@
         font-size: 11px;
         font-weight: 600;
         color: #475569;
+        cursor: row-resize;
+        user-select: none;
       }
 
       .trans-drawer-actions {
@@ -599,7 +602,8 @@
         overflow-y: auto;
         white-space: pre-wrap;
         user-select: text;
-        max-height: 160px;
+        flex: 1;
+        min-height: 40px;
       }
 
       .resize-grip:hover {
@@ -721,10 +725,10 @@
           </div>
         </div>
 
-        <!-- Khung dịch chuẩn ngữ cảnh (Drawer) -->
+        <!-- Khung dịch chuẩn ngữ cảnh (Drawer kéo lên/xuống được) -->
         <div class="trans-drawer" id="trans-drawer">
-          <div class="trans-drawer-header">
-            <span>🌐 Dịch chuẩn ngữ cảnh (IELTS Context)</span>
+          <div class="trans-drawer-header" id="trans-drawer-header" title="Nắm giữ và kéo lên / kéo xuống để chỉnh độ cao">
+            <span>🌐 Dịch đối ứng song ngữ ═ (Kéo lên/xuống) ═</span>
             <div class="trans-drawer-actions">
               <button class="trans-drawer-btn" id="btn-copy-trans" title="Sao chép bản dịch">📋 Chép</button>
               <button class="trans-drawer-btn" id="btn-close-trans" title="Đóng khung dịch (Esc)">✕</button>
@@ -1041,16 +1045,20 @@
           let segments = (data[0] || []).filter(item => item && item[0] && item[1]);
 
           segments.forEach((seg, idx) => {
+            let cleanVi = seg[0].trim();
             let span = document.createElement("span");
             span.className = "trans-seg";
             span.dataset.idx = idx;
-            span.textContent = seg[0] + " ";
+            span.textContent = cleanVi;
             span.style.cursor = "pointer";
             span.title = "Nhấp để tìm câu tiếng Anh tương ứng";
             span.addEventListener("click", () => highlightAlignFromVi(idx));
             span.addEventListener("mouseup", () => highlightAlignFromVi(idx));
-            if (transBody) transBody.appendChild(span);
-            currentAlignSegments.push({ en: seg[1].trim(), vi: seg[0].trim() });
+            if (transBody) {
+              transBody.appendChild(span);
+              transBody.appendChild(document.createTextNode(" "));
+            }
+            currentAlignSegments.push({ en: seg[1].trim(), vi: cleanVi });
           });
 
           if (data.length > 1 && data[1]) {
@@ -1091,6 +1099,78 @@
           });
         }
       });
+    }
+
+    // KÉO THANH TIÊU ĐỀ ĐỂ ĐIỀU CHỈNH ĐỘ CAO KHUNG DỊCH (SPLITTER DRAG)
+    const transDrawerHeader = shadow.getElementById("trans-drawer-header");
+    let isDraggingDrawer = false;
+    let startDrawerY = 0;
+    let startDrawerH = 160;
+
+    let transFontSize = 13;
+    chrome.storage.local.get({ transDrawerHeight: 160, transFontSize: 13 }, (res) => {
+      if (res.transDrawerHeight && transDrawer) {
+        transDrawer.style.setProperty("height", `${res.transDrawerHeight}px`, "important");
+      }
+      if (res.transFontSize) {
+        transFontSize = res.transFontSize;
+        if (transBody) transBody.style.fontSize = `${transFontSize}px`;
+      }
+    });
+
+    if (transDrawerHeader && transDrawer) {
+      transDrawerHeader.addEventListener("mousedown", (e) => {
+        if (e.target.closest("button")) return;
+        isDraggingDrawer = true;
+        startDrawerY = e.clientY;
+        startDrawerH = transDrawer.offsetHeight || 160;
+        document.body.style.userSelect = "none";
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isDraggingDrawer) return;
+        const delta = startDrawerY - e.clientY;
+        const card = shadow.getElementById("ielts-card");
+        const maxH = card ? Math.max(120, card.offsetHeight - 50) : 350;
+        const newH = Math.max(55, Math.min(maxH, startDrawerH + delta));
+        transDrawer.style.setProperty("height", `${newH}px`, "important");
+        chrome.storage.local.set({ transDrawerHeight: newH });
+      }, true);
+
+      window.addEventListener("mouseup", () => {
+        if (isDraggingDrawer) {
+          isDraggingDrawer = false;
+          document.body.style.userSelect = "";
+        }
+      }, true);
+    }
+
+    // CTRL + LĂN CHUỘT ĐỂ PHÓNG TO / THU NHỎ CỠ CHỮ TRỰC TIẾP (CẢ 2 KHUNG)
+    textArea.addEventListener("wheel", (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        adjustFontSize(e.deltaY < 0 ? 1 : -1);
+      }
+    }, { passive: false });
+
+    function adjustTransFontSize(delta) {
+      const target = transFontSize + delta;
+      if (target >= 10 && target <= 28) {
+        transFontSize = target;
+        if (transBody) transBody.style.fontSize = `${transFontSize}px`;
+        chrome.storage.local.set({ transFontSize });
+      }
+    }
+
+    if (transBody) {
+      transBody.addEventListener("wheel", (e) => {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          adjustTransFontSize(e.deltaY < 0 ? 1 : -1);
+        }
+      }, { passive: false });
     }
 
     // Phím tắt Ctrl + H để Highlight, Ctrl + T để Dịch, Ctrl + Z để hoàn tác highlight

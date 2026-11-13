@@ -63,4 +63,12 @@ assert(contentJs.includes("highlightAlignFromEn") && contentJs.includes("highlig
 assert(appPy.includes("ensure_single_instance") && appPy.includes("os._exit(0)"), "Desktop App có khóa đơn phiên chống mở đè nhiều app và thoát sạch sẽ");
 assert(contentJs.includes("btn-close-widget"), "Chrome Extension có nút đóng hoàn toàn (✕) để không tự hiện lại");
 
+// Kiểm thử tính năng Kéo lên/xuống khoảng giữa & Ctrl + Lăn chuột to/nhỏ chữ cả 2 khung
+assert(appPy.includes("on_splitter_motion") && appPy.includes("cursor=\"size_ns\""), "Desktop App hỗ trợ nắm kéo thanh giữa lên/xuống điều chỉnh độ cao khung dịch");
+assert(appPy.includes("on_en_ctrl_wheel") && appPy.includes("on_vi_ctrl_wheel"), "Desktop App hỗ trợ Ctrl + Lăn chuột chỉnh to/nhỏ cỡ chữ cả 2 khung Anh - Việt");
+assert(appPy.includes("isDraggingTransSplitter") || appPy.includes("on_splitter_motion"), "Desktop App hỗ trợ kéo thanh giữa điều chỉnh độ cao khung dịch");
+assert(appPy.includes("tag_add_clean"), "Desktop App tự động cắt bỏ khoảng trắng và xuống dòng ở 2 đầu để highlight không bị tràn vệt màu");
+assert(standaloneHtml.includes("isDraggingTransSplitter") && standaloneHtml.includes("adjustTransFont"), "Web Standalone hỗ trợ kéo thanh giữa và Ctrl + Lăn chuột to chữ cả 2 khung");
+assert(contentJs.includes("isDraggingDrawer") && contentJs.includes("adjustTransFontSize"), "Chrome Extension hỗ trợ kéo thanh giữa và Ctrl + Lăn chuột to chữ cả 2 khung");
+
 console.log(`\nKết quả: ${passed}/${total} bài kiểm tra thành công!`);

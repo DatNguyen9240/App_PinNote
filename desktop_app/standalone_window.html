@@ -245,7 +245,8 @@
       flex-direction: column;
       background: #f0fdf4;
       border-top: 1px solid #bbf7d0;
-      max-height: 40%;
+      height: 160px;
+      max-height: 85%;
       overflow: hidden;
       user-select: text;
     }
@@ -254,11 +255,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 4px 8px;
+      padding: 5px 8px;
       background: #dcfce7;
       font-size: 11px;
       font-weight: 700;
       color: #166534;
+      cursor: row-resize;
+      user-select: none;
     }
 
     .trans-actions {
@@ -389,10 +392,10 @@
     </div>
   </main>
 
-  <!-- Bảng dịch chuẩn ngữ cảnh -->
+  <!-- Bảng dịch chuẩn ngữ cảnh (Kéo lên/xuống được) -->
   <div class="trans-panel" id="trans-panel">
-    <div class="trans-header">
-      <span>🌐 Bản dịch chuẩn ngữ cảnh (Anh ➔ Việt):</span>
+    <div class="trans-header" id="trans-header" title="Nắm giữ và kéo lên / kéo xuống để chỉnh độ cao">
+      <span>🌐 Dịch đối ứng song ngữ ═ (Kéo lên/xuống) ═</span>
       <div class="trans-actions">
         <button class="icon-btn" id="btn-copy-trans" title="Sao chép" style="font-weight:600; color:#15803d;">📋 Chép</button>
         <button class="icon-btn" id="btn-close-trans" title="Đóng bảng dịch" style="font-weight:bold; color:#64748b;">✕</button>
@@ -794,16 +797,18 @@
             let segments = (data[0] || []).filter(item => item && item[0] && item[1]);
 
             segments.forEach((seg, idx) => {
+              let cleanVi = seg[0].trim();
               let span = document.createElement("span");
               span.className = "trans-seg";
               span.dataset.idx = idx;
-              span.textContent = seg[0] + " ";
+              span.textContent = cleanVi;
               span.style.cursor = "pointer";
               span.title = "Nhấp để tìm câu tiếng Anh tương ứng";
               span.addEventListener("click", () => highlightAlignFromVi(idx));
               span.addEventListener("mouseup", () => highlightAlignFromVi(idx));
               transBody.appendChild(span);
-              currentAlignSegments.push({ en: seg[1].trim(), vi: seg[0].trim() });
+              transBody.appendChild(document.createTextNode(" "));
+              currentAlignSegments.push({ en: seg[1].trim(), vi: cleanVi });
             });
 
             if (data.length > 1 && data[1]) {
@@ -841,6 +846,73 @@
         let text = transBody.textContent.trim();
         if (text) navigator.clipboard.writeText(text);
       });
+
+      // KÉO THANH TIÊU ĐỀ ĐỂ ĐIỀU CHỈNH ĐỘ CAO KHUNG DỊCH (SPLITTER DRAG)
+      const transHeader = document.getElementById("trans-header");
+      let isDraggingTransSplitter = false;
+      let startTransY = 0;
+      let startTransH = 160;
+
+      let transFontSize = parseInt(localStorage.getItem("ielts_desk_trans_font")) || 13;
+      transBody.style.fontSize = transFontSize + "px";
+
+      const savedTransH = parseInt(localStorage.getItem("ielts_desk_trans_height"));
+      if (savedTransH) {
+        transPanel.style.height = savedTransH + "px";
+      }
+
+      if (transHeader) {
+        transHeader.addEventListener("mousedown", (e) => {
+          if (e.target.closest("button")) return;
+          isDraggingTransSplitter = true;
+          startTransY = e.clientY;
+          startTransH = transPanel.offsetHeight || 160;
+          document.body.style.userSelect = "none";
+          document.body.style.cursor = "row-resize";
+          e.preventDefault();
+        });
+
+        window.addEventListener("mousemove", (e) => {
+          if (!isDraggingTransSplitter) return;
+          const delta = startTransY - e.clientY;
+          const maxH = Math.max(100, window.innerHeight - 80);
+          const newH = Math.max(55, Math.min(maxH, startTransH + delta));
+          transPanel.style.height = newH + "px";
+          localStorage.setItem("ielts_desk_trans_height", newH);
+        });
+
+        window.addEventListener("mouseup", () => {
+          if (isDraggingTransSplitter) {
+            isDraggingTransSplitter = false;
+            document.body.style.userSelect = "";
+            document.body.style.cursor = "";
+          }
+        });
+      }
+
+      // CTRL + LĂN CHUỘT ĐỂ PHÓNG TO / THU NHỎ CỠ CHỮ TRỰC TIẾP (CẢ 2 KHUNG)
+      textEditor.addEventListener("wheel", (e) => {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          adjustFont(e.deltaY < 0 ? 1 : -1);
+        }
+      }, { passive: false });
+
+      function adjustTransFont(delta) {
+        const n = transFontSize + delta;
+        if (n >= 10 && n <= 32) {
+          transFontSize = n;
+          transBody.style.fontSize = transFontSize + "px";
+          localStorage.setItem("ielts_desk_trans_font", transFontSize);
+        }
+      }
+
+      transBody.addEventListener("wheel", (e) => {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          adjustTransFont(e.deltaY < 0 ? 1 : -1);
+        }
+      }, { passive: false });
 
       // Phím tắt
       window.addEventListener("keydown", (e) => {

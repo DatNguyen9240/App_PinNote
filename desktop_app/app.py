@@ -98,6 +98,24 @@ def speak_english_text(text):
     threading.Thread(target=run_speech, daemon=True).start()
 
 
+def tag_add_clean(text_widget, tag_name, start, end):
+    """Gán tag highlight nhưng tự động loại trừ khoảng trắng và ký tự xuống dòng ở 2 đầu để không bị tràn vệt màu ra hết dòng."""
+    try:
+        txt = text_widget.get(start, end)
+        if not txt or not txt.strip():
+            return None, None
+        l_strip = len(txt) - len(txt.lstrip())
+        r_strip = len(txt) - len(txt.rstrip())
+        clean_s = text_widget.index(f"{start}+{l_strip}c")
+        clean_e = text_widget.index(f"{end}-{r_strip}c")
+        if text_widget.compare(clean_s, "<", clean_e):
+            text_widget.tag_add(tag_name, clean_s, clean_e)
+            return clean_s, clean_e
+    except Exception:
+        pass
+    return None, None
+
+
 # ==============================================================================
 # LỚP CỬA SỔ NOTE TÁCH RỜI (DETACHED NOTE WINDOW)
 # ==============================================================================
@@ -129,6 +147,9 @@ class DetachedNoteWindow:
             self.top.geometry(f"{w}x{h}+{mx}+{my}")
 
         self.font_size = main_app.font_size
+        self.trans_font_size = 11
+        self.trans_height = 160
+        self.splitter_drag = None
         self.zoom_mode = "fit"
         self.active_tab = note.get("active_tab", "text")
         self.current_image = None
@@ -271,17 +292,24 @@ class DetachedNoteWindow:
         )
         self.text_editor.pack(fill=tk.BOTH, expand=True)
 
-        # Khung dịch chuẩn ngữ cảnh đối ứng song ngữ
-        self.trans_panel = tk.Frame(self.top, bg="#f8fafc", relief="solid", bd=1)
+        # Khung dịch chuẩn ngữ cảnh đối ứng song ngữ (kéo chỉnh độ cao được)
+        self.trans_panel = tk.Frame(self.top, bg="#f8fafc", relief="solid", bd=1, height=self.trans_height)
+        self.trans_panel.pack_propagate(False)
 
-        trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=24)
+        trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=26, cursor="size_ns")
         trans_header.pack(fill=tk.X, side=tk.TOP)
 
         lbl_trans_title = tk.Label(
-            trans_header, text="🌐 Dịch đối ứng song ngữ (Bôi đen câu/từ để tìm đối ứng 2 chiều)",
-            font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2
+            trans_header, text="🌐 Dịch đối ứng song ngữ  ═ (Kéo lên/xuống) ═",
+            font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2,
+            cursor="size_ns"
         )
         lbl_trans_title.pack(side=tk.LEFT)
+
+        trans_header.bind("<Button-1>", self.on_splitter_press)
+        trans_header.bind("<B1-Motion>", self.on_splitter_motion)
+        lbl_trans_title.bind("<Button-1>", self.on_splitter_press)
+        lbl_trans_title.bind("<B1-Motion>", self.on_splitter_motion)
 
         btn_close_trans = tk.Label(
             trans_header, text="✕", font=("Segoe UI", 9, "bold"),
@@ -299,15 +327,14 @@ class DetachedNoteWindow:
 
         self.trans_text = tk.Text(
             self.trans_panel,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", self.trans_font_size),
             wrap=tk.WORD,
             relief="flat",
             bd=0,
             bg="#f8fafc",
             fg="#0f172a",
             padx=8,
-            pady=6,
-            height=5
+            pady=6
         )
         self.trans_text.pack(fill=tk.BOTH, expand=True)
 
@@ -345,6 +372,10 @@ class DetachedNoteWindow:
         self.trans_text.bind("<<Selection>>", self.on_vi_selection_change)
         self.trans_text.bind("<ButtonRelease-1>", self.on_vi_selection_change)
         self.trans_text.bind("<KeyRelease>", self.on_vi_selection_change)
+
+        # Ctrl + Lăn chuột để chỉnh cỡ chữ (Cả 2 khung tiếng Anh và tiếng Việt)
+        self.text_editor.bind("<Control-MouseWheel>", self.on_en_ctrl_wheel)
+        self.trans_text.bind("<Control-MouseWheel>", self.on_vi_ctrl_wheel)
 
         self.top.bind("<Button-3>", self.show_context_menu)
         self.top.bind("<Configure>", self.on_window_resize)
@@ -418,6 +449,16 @@ class DetachedNoteWindow:
             sel_start = self.text_editor.index(tk.SEL_FIRST)
             sel_end = self.text_editor.index(tk.SEL_LAST)
         except tk.TclError:
+            return
+
+        txt = self.text_editor.get(sel_start, sel_end)
+        if not txt or not txt.strip():
+            return
+        l_strip = len(txt) - len(txt.lstrip())
+        r_strip = len(txt) - len(txt.rstrip())
+        sel_start = self.text_editor.index(f"{sel_start}+{l_strip}c")
+        sel_end = self.text_editor.index(f"{sel_end}-{r_strip}c")
+        if not self.text_editor.compare(sel_start, "<", sel_end):
             return
 
         self.hl_counter += 1
@@ -579,25 +620,44 @@ class DetachedNoteWindow:
             else:
                 ms_en, me_en = None, None
 
+            raw_vi = seg["vi"]
+            clean_vi = raw_vi.strip()
             ms_vi = f"det_vi_s_{i}_{ts}"
             me_vi = f"det_vi_e_{i}_{ts}"
-            vi_start = self.trans_text.index(tk.INSERT)
-            self.trans_text.insert(tk.END, seg["vi"])
-            vi_end = self.trans_text.index(f"{tk.INSERT}-1c")
 
-            self.trans_text.mark_set(ms_vi, vi_start)
-            self.trans_text.mark_set(me_vi, vi_end)
-            self.trans_text.mark_gravity(ms_vi, tk.LEFT)
-            self.trans_text.mark_gravity(me_vi, tk.RIGHT)
+            if clean_vi:
+                lead = raw_vi[:len(raw_vi) - len(raw_vi.lstrip())]
+                trail = raw_vi[len(raw_vi.rstrip()):]
 
-            if ms_en and me_en:
+                if lead:
+                    self.trans_text.insert(tk.END, lead)
+
+                pos_s = self.trans_text.index("end-1c")
+                self.trans_text.mark_set(ms_vi, pos_s)
+                self.trans_text.mark_gravity(ms_vi, tk.LEFT)
+
+                self.trans_text.insert(tk.END, clean_vi)
+
+                pos_e = self.trans_text.index("end-1c")
+                self.trans_text.mark_set(me_vi, pos_e)
+                self.trans_text.mark_gravity(me_vi, tk.LEFT)
+
+                if trail:
+                    self.trans_text.insert(tk.END, trail)
+                else:
+                    self.trans_text.insert(tk.END, " ")
+            else:
+                self.trans_text.insert(tk.END, raw_vi)
+                ms_vi, me_vi = None, None
+
+            if ms_en and me_en and ms_vi and me_vi:
                 self.align_segments.append({
                     "ms_en": ms_en,
                     "me_en": me_en,
                     "ms_vi": ms_vi,
                     "me_vi": me_vi,
                     "en": clean_en,
-                    "vi": seg["vi"].strip()
+                    "vi": clean_vi
                 })
 
         if extra:
@@ -629,9 +689,9 @@ class DetachedNoteWindow:
                     if self.text_editor.compare(sel_s, "<", e_en) and self.text_editor.compare(sel_e, ">", s_en):
                         vi_s = self.trans_text.index(seg["ms_vi"])
                         vi_e = self.trans_text.index(seg["me_vi"])
-                        self.trans_text.tag_add("align_match", vi_s, vi_e)
-                        if not first_match:
-                            first_match = vi_s
+                        m_s, m_e = tag_add_clean(self.trans_text, "align_match", vi_s, vi_e)
+                        if not first_match and m_s:
+                            first_match = m_s
                 except Exception:
                     pass
             if first_match:
@@ -660,9 +720,9 @@ class DetachedNoteWindow:
                     if self.trans_text.compare(sel_s, "<", e_vi) and self.trans_text.compare(sel_e, ">", s_vi):
                         en_s = self.text_editor.index(seg["ms_en"])
                         en_e = self.text_editor.index(seg["me_en"])
-                        self.text_editor.tag_add("align_match", en_s, en_e)
-                        if not first_match:
-                            first_match = en_s
+                        m_s, m_e = tag_add_clean(self.text_editor, "align_match", en_s, en_e)
+                        if not first_match and m_s:
+                            first_match = m_s
                 except Exception:
                     pass
             if first_match:
@@ -717,9 +777,46 @@ class DetachedNoteWindow:
 
     def change_font_size(self, delta):
         new_size = self.font_size + delta
-        if 11 <= new_size <= 28:
+        if 10 <= new_size <= 36:
             self.font_size = new_size
             self.text_editor.configure(font=("Segoe UI", self.font_size))
+
+    def change_trans_font_size(self, delta):
+        new_size = self.trans_font_size + delta
+        if 9 <= new_size <= 36:
+            self.trans_font_size = new_size
+            self.trans_text.configure(font=("Segoe UI", self.trans_font_size))
+
+    def on_en_ctrl_wheel(self, event):
+        if event.delta > 0:
+            self.change_font_size(1)
+        elif event.delta < 0:
+            self.change_font_size(-1)
+        return "break"
+
+    def on_vi_ctrl_wheel(self, event):
+        if event.delta > 0:
+            self.change_trans_font_size(1)
+        elif event.delta < 0:
+            self.change_trans_font_size(-1)
+        return "break"
+
+    def on_splitter_press(self, event):
+        self.splitter_drag = {
+            "start_y": event.y_root,
+            "start_h": self.trans_panel.winfo_height()
+        }
+
+    def on_splitter_motion(self, event):
+        if not self.splitter_drag:
+            return
+        delta = event.y_root - self.splitter_drag["start_y"]
+        new_h = self.splitter_drag["start_h"] - delta
+        max_h = max(100, self.top.winfo_height() - 90)
+        min_h = 55
+        new_h = max(min_h, min(new_h, max_h))
+        self.trans_height = new_h
+        self.trans_panel.configure(height=new_h)
 
     def rename_note(self):
         old_title = self.note.get("title", "Note")
@@ -837,6 +934,9 @@ class IELTSCornerApp:
 
         # Trạng thái chung
         self.font_size = 14
+        self.trans_font_size = 11
+        self.trans_height = 160
+        self.splitter_drag = None
         self.zoom_mode = "fit"
         self.is_zen_mode = False
         self.active_tab = "text"
@@ -912,6 +1012,10 @@ class IELTSCornerApp:
         self.trans_text.bind("<ButtonRelease-1>", self.on_vi_selection_change)
         self.trans_text.bind("<KeyRelease>", self.on_vi_selection_change)
 
+        # Ctrl + Lăn chuột để chỉnh cỡ chữ (Cả 2 khung tiếng Anh và tiếng Việt)
+        self.text_editor.bind("<Control-MouseWheel>", self.on_en_ctrl_wheel)
+        self.trans_text.bind("<Control-MouseWheel>", self.on_vi_ctrl_wheel)
+
         # Menu chuột phải
         self.create_context_menu()
         self.root.bind("<Button-3>", self.show_context_menu)
@@ -937,6 +1041,8 @@ class IELTSCornerApp:
                     data = json.load(f)
                     default_geometry = data.get("geometry", default_geometry)
                     self.font_size = data.get("font_size", 14)
+                    self.trans_font_size = data.get("trans_font_size", 11)
+                    self.trans_height = data.get("trans_height", 160)
                     self.is_topmost = data.get("is_topmost", True)
                     self.is_zen_mode = data.get("is_zen_mode", False)
                     self.active_note_id = str(data.get("active_note_id", "1"))
@@ -1015,6 +1121,8 @@ class IELTSCornerApp:
             data = {
                 "geometry": self.root.geometry(),
                 "font_size": self.font_size,
+                "trans_font_size": self.trans_font_size,
+                "trans_height": self.trans_height,
                 "is_topmost": self.is_topmost,
                 "is_zen_mode": self.is_zen_mode,
                 "active_note_id": self.active_note_id,
@@ -1401,6 +1509,16 @@ class IELTSCornerApp:
         except tk.TclError:
             return
 
+        txt = self.text_editor.get(sel_start, sel_end)
+        if not txt or not txt.strip():
+            return
+        l_strip = len(txt) - len(txt.lstrip())
+        r_strip = len(txt) - len(txt.rstrip())
+        sel_start = self.text_editor.index(f"{sel_start}+{l_strip}c")
+        sel_end = self.text_editor.index(f"{sel_end}-{r_strip}c")
+        if not self.text_editor.compare(sel_start, "<", sel_end):
+            return
+
         self.hl_counter += 1
         ms = f"hl_s_{self.hl_counter}"
         me = f"hl_e_{self.hl_counter}"
@@ -1448,6 +1566,16 @@ class IELTSCornerApp:
             sel_start = self.text_editor.index(tk.SEL_FIRST)
             sel_end = self.text_editor.index(tk.SEL_LAST)
         except tk.TclError:
+            return
+
+        txt = self.text_editor.get(sel_start, sel_end)
+        if not txt or not txt.strip():
+            return
+        l_strip = len(txt) - len(txt.lstrip())
+        r_strip = len(txt) - len(txt.rstrip())
+        sel_start = self.text_editor.index(f"{sel_start}+{l_strip}c")
+        sel_end = self.text_editor.index(f"{sel_end}-{r_strip}c")
+        if not self.text_editor.compare(sel_start, "<", sel_end):
             return
 
         current_tags = self.text_editor.tag_names(sel_start)
@@ -1597,25 +1725,44 @@ class IELTSCornerApp:
             else:
                 ms_en, me_en = None, None
 
+            raw_vi = seg["vi"]
+            clean_vi = raw_vi.strip()
             ms_vi = f"main_vi_s_{i}_{ts}"
             me_vi = f"main_vi_e_{i}_{ts}"
-            vi_start = self.trans_text.index(tk.INSERT)
-            self.trans_text.insert(tk.END, seg["vi"])
-            vi_end = self.trans_text.index(f"{tk.INSERT}-1c")
 
-            self.trans_text.mark_set(ms_vi, vi_start)
-            self.trans_text.mark_set(me_vi, vi_end)
-            self.trans_text.mark_gravity(ms_vi, tk.LEFT)
-            self.trans_text.mark_gravity(me_vi, tk.RIGHT)
+            if clean_vi:
+                lead = raw_vi[:len(raw_vi) - len(raw_vi.lstrip())]
+                trail = raw_vi[len(raw_vi.rstrip()):]
 
-            if ms_en and me_en:
+                if lead:
+                    self.trans_text.insert(tk.END, lead)
+
+                pos_s = self.trans_text.index("end-1c")
+                self.trans_text.mark_set(ms_vi, pos_s)
+                self.trans_text.mark_gravity(ms_vi, tk.LEFT)
+
+                self.trans_text.insert(tk.END, clean_vi)
+
+                pos_e = self.trans_text.index("end-1c")
+                self.trans_text.mark_set(me_vi, pos_e)
+                self.trans_text.mark_gravity(me_vi, tk.LEFT)
+
+                if trail:
+                    self.trans_text.insert(tk.END, trail)
+                else:
+                    self.trans_text.insert(tk.END, " ")
+            else:
+                self.trans_text.insert(tk.END, raw_vi)
+                ms_vi, me_vi = None, None
+
+            if ms_en and me_en and ms_vi and me_vi:
                 self.align_segments.append({
                     "ms_en": ms_en,
                     "me_en": me_en,
                     "ms_vi": ms_vi,
                     "me_vi": me_vi,
                     "en": clean_en,
-                    "vi": seg["vi"].strip()
+                    "vi": clean_vi
                 })
 
         if extra:
@@ -1647,9 +1794,9 @@ class IELTSCornerApp:
                     if self.text_editor.compare(sel_s, "<", e_en) and self.text_editor.compare(sel_e, ">", s_en):
                         vi_s = self.trans_text.index(seg["ms_vi"])
                         vi_e = self.trans_text.index(seg["me_vi"])
-                        self.trans_text.tag_add("align_match", vi_s, vi_e)
-                        if not first_match:
-                            first_match = vi_s
+                        m_s, m_e = tag_add_clean(self.trans_text, "align_match", vi_s, vi_e)
+                        if not first_match and m_s:
+                            first_match = m_s
                 except Exception:
                     pass
             if first_match:
@@ -1678,9 +1825,9 @@ class IELTSCornerApp:
                     if self.trans_text.compare(sel_s, "<", e_vi) and self.trans_text.compare(sel_e, ">", s_vi):
                         en_s = self.text_editor.index(seg["ms_en"])
                         en_e = self.text_editor.index(seg["me_en"])
-                        self.text_editor.tag_add("align_match", en_s, en_e)
-                        if not first_match:
-                            first_match = en_s
+                        m_s, m_e = tag_add_clean(self.text_editor, "align_match", en_s, en_e)
+                        if not first_match and m_s:
+                            first_match = m_s
                 except Exception:
                     pass
             if first_match:
@@ -1820,17 +1967,24 @@ class IELTSCornerApp:
         )
         self.text_editor.pack(fill=tk.BOTH, expand=True)
 
-        # 5. KHUNG KẾT QUẢ DỊCH ĐỐI ỨNG SONG NGỮ
-        self.trans_panel = tk.Frame(self.root, bg="#f8fafc", relief="solid", bd=1)
+        # 5. KHUNG KẾT QUẢ DỊCH ĐỐI ỨNG SONG NGỮ (KÉO LÊN/XUỐNG ĐƯỢC)
+        self.trans_panel = tk.Frame(self.root, bg="#f8fafc", relief="solid", bd=1, height=self.trans_height)
+        self.trans_panel.pack_propagate(False)
 
-        trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=24)
+        trans_header = tk.Frame(self.trans_panel, bg="#f1f5f9", height=26, cursor="size_ns")
         trans_header.pack(fill=tk.X, side=tk.TOP)
 
         lbl_trans_title = tk.Label(
-            trans_header, text="🌐 Dịch đối ứng song ngữ (Bôi đen câu/từ để tìm đối ứng 2 chiều)",
-            font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2
+            trans_header, text="🌐 Dịch đối ứng song ngữ  ═ (Kéo lên/xuống) ═",
+            font=("Segoe UI", 8, "bold"), bg="#f1f5f9", fg="#334155", padx=6, pady=2,
+            cursor="size_ns"
         )
         lbl_trans_title.pack(side=tk.LEFT)
+
+        trans_header.bind("<Button-1>", self.on_splitter_press)
+        trans_header.bind("<B1-Motion>", self.on_splitter_motion)
+        lbl_trans_title.bind("<Button-1>", self.on_splitter_press)
+        lbl_trans_title.bind("<B1-Motion>", self.on_splitter_motion)
 
         btn_close_trans = tk.Label(
             trans_header, text="✕", font=("Segoe UI", 9, "bold"),
@@ -1848,15 +2002,14 @@ class IELTSCornerApp:
 
         self.trans_text = tk.Text(
             self.trans_panel,
-            font=("Segoe UI", 10),
+            font=("Segoe UI", self.trans_font_size),
             wrap=tk.WORD,
             relief="flat",
             bd=0,
             bg="#f8fafc",
             fg="#0f172a",
             padx=8,
-            pady=6,
-            height=5
+            pady=6
         )
         self.trans_text.pack(fill=tk.BOTH, expand=True)
 
@@ -1963,9 +2116,46 @@ class IELTSCornerApp:
 
     def change_font_size(self, delta):
         new_size = self.font_size + delta
-        if 11 <= new_size <= 28:
+        if 10 <= new_size <= 36:
             self.font_size = new_size
             self.text_editor.configure(font=("Segoe UI", self.font_size))
+
+    def change_trans_font_size(self, delta):
+        new_size = self.trans_font_size + delta
+        if 9 <= new_size <= 36:
+            self.trans_font_size = new_size
+            self.trans_text.configure(font=("Segoe UI", self.trans_font_size))
+
+    def on_en_ctrl_wheel(self, event):
+        if event.delta > 0:
+            self.change_font_size(1)
+        elif event.delta < 0:
+            self.change_font_size(-1)
+        return "break"
+
+    def on_vi_ctrl_wheel(self, event):
+        if event.delta > 0:
+            self.change_trans_font_size(1)
+        elif event.delta < 0:
+            self.change_trans_font_size(-1)
+        return "break"
+
+    def on_splitter_press(self, event):
+        self.splitter_drag = {
+            "start_y": event.y_root,
+            "start_h": self.trans_panel.winfo_height()
+        }
+
+    def on_splitter_motion(self, event):
+        if not self.splitter_drag:
+            return
+        delta = event.y_root - self.splitter_drag["start_y"]
+        new_h = self.splitter_drag["start_h"] - delta
+        max_h = max(100, self.root.winfo_height() - 90)
+        min_h = 55
+        new_h = max(min_h, min(new_h, max_h))
+        self.trans_height = new_h
+        self.trans_panel.configure(height=new_h)
 
     def clear_text(self):
         self.text_editor.delete("1.0", tk.END)
